@@ -123,7 +123,28 @@ function pianoChord(ch,start,dur){const base=60+ch.root;tone(freq(base-12),start
 function scheduleChord(ch,start,dur,style){style==="arp"?arpeggioChord(ch,start,dur):style==="piano"?pianoChord(ch,start,dur):blockChord(ch,start,dur)}
 function melodyTone(note,start,dur){if(!note.rest)tone(freq(note.midi),start,dur*.88,.23,"sine")}
 function clearPlayback(){timers.forEach(clearTimeout);timers=[];nodes.forEach(n=>{try{n.stop()}catch(e){}});nodes=[]}
-function stopAll(){playing=false;clearPlayback();nowChord.textContent="—";nowMelody.textContent="—";status.textContent="停止中"}
+function stopAll(){
+playing=false;
+
+if(master && ctx){
+try{
+master.gain.cancelScheduledValues(ctx.currentTime);
+master.gain.setValueAtTime(0.0001,ctx.currentTime);
+}catch(e){}
+}
+
+clearPlayback();
+
+document.getElementById("nowChord").textContent="—";
+document.getElementById("nowMelody").textContent="—";
+document.getElementById("status").textContent="停止中";
+
+if(master && ctx){
+try{
+master.gain.setValueAtTime(.42,ctx.currentTime+.05);
+}catch(e){}
+}
+}
 
 async function startPlayback(){
 stopAll();error.textContent="";
@@ -148,8 +169,21 @@ timers.push(setTimeout(()=>{if(!playing)return;if(loop.checked)startPlayback();e
 }catch(e){error.textContent=e.message}
 }
 
-test.onclick=async()=>{error.textContent="";try{await initAudio();const t=ctx.currentTime+.03;[261.63,329.63,392].forEach(f=>tone(f,t,.7,.14));tone(523.25,t+.8,.7,.23,"sine");status.textContent="テスト音を再生しました"}catch(e){error.textContent=e.message}};
-play.onclick=startPlayback;stop.onclick=stopAll;
+document.getElementById("test").onclick=async()=>{
+document.getElementById("error").textContent="";
+try{
+await initAudio();
+const t=ctx.currentTime+.03;
+[261.63,329.63,392].forEach(f=>tone(f,t,.7,.14));
+tone(523.25,t+.8,.7,.23,"sine");
+document.getElementById("status").textContent="テスト音を再生しました";
+}catch(e){
+document.getElementById("error").textContent=e.message;
+}
+};
+
+document.getElementById("play").onclick=startPlayback;
+document.getElementById("stop").onclick=stopAll;
 
 loadLibrarySong.onclick=()=>{
 const key=librarySongs.value;if(!key){alert("曲を選んでください。");return}
