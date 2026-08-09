@@ -16,3 +16,612 @@ body{
 .wrap{
   max-width:720px;
   margin:auto;
+  padding:18px 14px 40px;
+}
+.card{
+  background:#fff;
+  border-radius:18px;
+  padding:16px;
+  margin:12px 0;
+  box-shadow:0 1px 8px rgba(0,0,0,.06);
+}
+h1{
+  font-size:28px;
+  margin:6px 0;
+}
+.sub{
+  font-size:14px;
+  color:#666;
+  line-height:1.6;
+}
+textarea,input,select{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px;
+  border:1px solid #d8d8dd;
+  border-radius:12px;
+  font:inherit;
+}
+textarea{
+  min-height:130px;
+  line-height:1.55;
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+button{
+  width:100%;
+  padding:15px;
+  border:0;
+  border-radius:14px;
+  font-size:17px;
+  font-weight:700;
+  margin-top:10px;
+  background:#111;
+  color:#fff;
+}
+button.secondary{
+  background:#e9e9ed;
+  color:#111;
+}
+#now{
+  text-align:center;
+  font-size:36px;
+  font-weight:800;
+  padding:12px;
+}
+#status{
+  text-align:center;
+  color:#666;
+  font-size:14px;
+}
+.note{
+  font-size:13px;
+  color:#666;
+  line-height:1.55;
+}
+.error{
+  color:#b00020;
+  font-size:13px;
+  margin-top:8px;
+  white-space:pre-wrap;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<h1>コードプレーヤー</h1>
+<div class="sub">
+コード進行を入力して、スマホで音を確認できます。
+</div>
+
+<div class="card">
+
+<label><b>コード進行</b></label>
+
+<textarea id="chords">F6 | Am7 | Bbmaj7 | C7
+Dm7 | Gm7 | C7 | F6</textarea>
+
+<div class="note">
+例：F6 | Gm7 | C7 | F6<br>
+拍数指定：F6:4 Gm7:2 C7:2 F6:4
+</div>
+
+<div id="error" class="error"></div>
+
+</div>
+
+<div class="card">
+
+<div class="grid">
+
+<div>
+<label><b>BPM</b></label>
+<input id="bpm" type="number" min="30" max="240" value="84">
+</div>
+
+<div>
+<label><b>標準拍数</b></label>
+
+<select id="beats">
+<option value="1">1拍</option>
+<option value="2">2拍</option>
+<option value="4" selected>4拍</option>
+<option value="8">8拍</option>
+</select>
+
+</div>
+
+</div>
+
+<button id="test" class="secondary">
+🔊 テスト音
+</button>
+
+<button id="play">
+▶ 再生
+</button>
+
+<button id="stop" class="secondary">
+■ 停止
+</button>
+
+</div>
+
+<div class="card">
+
+<div id="now">—</div>
+<div id="status">停止中</div>
+
+</div>
+
+</div>
+
+<script>
+
+let ctx=null;
+let master=null;
+let timers=[];
+let nodes=[];
+
+const N={
+"C":0,
+"C#":1,
+"DB":1,
+"D":2,
+"D#":3,
+"EB":3,
+"E":4,
+"F":5,
+"F#":6,
+"GB":6,
+"G":7,
+"G#":8,
+"AB":8,
+"A":9,
+"A#":10,
+"BB":10,
+"B":11
+};
+
+const TYPES=[
+
+[/^maj7$/i,[0,4,7,11]],
+[/^m7$/i,[0,3,7,10]],
+[/^7$/i,[0,4,7,10]],
+
+[/^m6$/i,[0,3,7,9]],
+[/^6$/i,[0,4,7,9]],
+
+[/^m$/i,[0,3,7]],
+
+[/^sus4$/i,[0,5,7]],
+[/^sus2$/i,[0,2,7]],
+
+[/^add9$/i,[0,4,7,14]],
+
+[/^dim$/i,[0,3,6]],
+[/^aug$/i,[0,4,8]],
+
+[/^$/,[0,4,7]]
+
+];
+
+async function initAudio(){
+
+const AC=
+window.AudioContext ||
+window.webkitAudioContext;
+
+if(!AC){
+throw new Error(
+"このブラウザは音声再生に対応していません。"
+);
+}
+
+if(!ctx){
+
+ctx=new AC();
+
+master=ctx.createGain();
+
+master.gain.value=.45;
+
+master.connect(
+ctx.destination
+);
+
+}
+
+if(ctx.state!=="running"){
+
+await ctx.resume();
+
+}
+
+}
+
+function parseChord(s){
+
+s=s
+.trim()
+.replace(/♭/g,"b")
+.replace(/♯/g,"#");
+
+const m=
+s.match(
+/^([A-Ga-g])([#b]?)(.*)$/
+);
+
+if(!m){
+throw new Error(
+"コードを読めません: "+s
+);
+}
+
+const root=
+(m[1].toUpperCase()+m[2])
+.toUpperCase();
+
+if(!(root in N)){
+throw new Error(
+"コードを読めません: "+s
+);
+}
+
+let suf=
+m[3]
+.trim()
+.replace(/^M7$/,"maj7");
+
+for(
+const [r,ints]
+of TYPES
+){
+
+if(r.test(suf)){
+
+return{
+symbol:s,
+root:N[root],
+ints
+};
+
+}
+
+}
+
+throw new Error(
+"未対応コード: "+s
+);
+
+}
+
+function parseSeq(
+text,
+defBeats
+){
+
+return text
+.replace(/\n/g," | ")
+.split(
+/\s*\|\s*|\s+/
+)
+.filter(Boolean)
+.map(tok=>{
+
+let beats=
+defBeats;
+
+const x=
+tok.match(
+/^(.*?):(\d+(?:\.\d+)?)$/
+);
+
+if(x){
+
+tok=x[1];
+
+beats=
+Number(x[2]);
+
+}
+
+return{
+...parseChord(tok),
+beats
+};
+
+});
+
+}
+
+function freq(m){
+
+return 440*
+Math.pow(
+2,
+(m-69)/12
+);
+
+}
+
+function tone(
+f,
+start,
+dur
+){
+
+const o=
+ctx.createOscillator();
+
+const g=
+ctx.createGain();
+
+o.type=
+"triangle";
+
+o.frequency.value=
+f;
+
+g.gain.setValueAtTime(
+.0001,
+start
+);
+
+g.gain.exponentialRampToValueAtTime(
+.18,
+start+.02
+);
+
+g.gain.exponentialRampToValueAtTime(
+.0001,
+start+dur
+);
+
+o.connect(g);
+
+g.connect(master);
+
+o.start(start);
+
+o.stop(
+start+dur+.05
+);
+
+nodes.push(o);
+
+}
+
+function playChord(
+ch,
+start,
+dur
+){
+
+const base=
+60+ch.root;
+
+ch.ints.forEach(
+i=>
+tone(
+freq(base+i),
+start,
+dur*.92
+)
+);
+
+}
+
+function stopAll(){
+
+timers.forEach(
+clearTimeout
+);
+
+timers=[];
+
+nodes.forEach(
+n=>{
+try{
+n.stop();
+}catch(e){}
+}
+);
+
+nodes=[];
+
+document
+.getElementById("now")
+.textContent="—";
+
+document
+.getElementById("status")
+.textContent="停止中";
+
+}
+
+document
+.getElementById("test")
+.onclick=
+async()=>{
+
+document
+.getElementById("error")
+.textContent="";
+
+try{
+
+await initAudio();
+
+const t=
+ctx.currentTime+.03;
+
+[
+261.63,
+329.63,
+392
+]
+.forEach(
+f=>
+tone(
+f,
+t,
+.7
+)
+);
+
+document
+.getElementById("status")
+.textContent=
+"テスト音を再生しました";
+
+}catch(e){
+
+document
+.getElementById("error")
+.textContent=
+e.message;
+
+}
+
+};
+
+document
+.getElementById("play")
+.onclick=
+async()=>{
+
+stopAll();
+
+document
+.getElementById("error")
+.textContent="";
+
+try{
+
+await initAudio();
+
+const bpm=
+Number(
+document
+.getElementById("bpm")
+.value
+);
+
+const defBeats=
+Number(
+document
+.getElementById("beats")
+.value
+);
+
+const seq=
+parseSeq(
+document
+.getElementById("chords")
+.value,
+defBeats
+);
+
+if(!seq.length){
+
+throw new Error(
+"コードを入力してください。"
+);
+
+}
+
+const beat=
+60/bpm;
+
+let when=
+ctx.currentTime+.08;
+
+let ms=
+80;
+
+seq.forEach(
+(ch,i)=>{
+
+const dur=
+ch.beats*beat;
+
+playChord(
+ch,
+when,
+dur
+);
+
+timers.push(
+
+setTimeout(
+()=>{
+
+document
+.getElementById("now")
+.textContent=
+ch.symbol;
+
+document
+.getElementById("status")
+.textContent=
+`再生中 ${i+1}/${seq.length}`;
+
+},
+ms
+)
+
+);
+
+when+=dur;
+
+ms+=dur*1000;
+
+});
+
+timers.push(
+
+setTimeout(
+()=>{
+
+document
+.getElementById("now")
+.textContent="—";
+
+document
+.getElementById("status")
+.textContent=
+"再生終了";
+
+},
+ms+50
+)
+
+);
+
+}catch(e){
+
+document
+.getElementById("error")
+.textContent=
+e.message;
+
+}
+
+};
+
+document
+.getElementById("stop")
+.onclick=
+stopAll;
+
+</script>
+
+</body>
+</html>
