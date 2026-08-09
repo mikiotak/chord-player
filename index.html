@@ -4,124 +4,64 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111111">
-<title>コードプレーヤー</title>
+<title>コード＆メロディープレーヤー</title>
 
 <style>
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;
   background:#f4f4f6;
-  margin:0;
-  color:#111;
+  margin:0;color:#111;
 }
-.wrap{
-  max-width:720px;
-  margin:auto;
-  padding:18px 14px 40px;
-}
+.wrap{max-width:720px;margin:auto;padding:18px 14px 40px}
 .card{
-  background:#fff;
-  border-radius:18px;
-  padding:16px;
-  margin:12px 0;
+  background:#fff;border-radius:18px;padding:16px;margin:12px 0;
   box-shadow:0 1px 8px rgba(0,0,0,.06);
 }
-h1{font-size:28px;margin:6px 0}
+h1{font-size:27px;margin:6px 0}
 .sub{font-size:14px;color:#666;line-height:1.6}
-
-label{
-  display:block;
-  font-weight:700;
-  margin:0 0 7px;
-}
-
+label{display:block;font-weight:700;margin:0 0 7px}
 textarea,input,select{
-  width:100%;
-  box-sizing:border-box;
-  padding:12px;
-  border:1px solid #d8d8dd;
-  border-radius:12px;
-  font:inherit;
-  background:white;
+  width:100%;box-sizing:border-box;padding:12px;
+  border:1px solid #d8d8dd;border-radius:12px;font:inherit;background:#fff;
 }
-textarea{
-  min-height:130px;
-  line-height:1.55;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
+textarea{min-height:105px;line-height:1.55}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 button{
-  width:100%;
-  padding:15px;
-  border:0;
-  border-radius:14px;
-  font-size:17px;
-  font-weight:700;
-  margin-top:10px;
-  background:#111;
-  color:#fff;
-  cursor:pointer;
+  width:100%;padding:15px;border:0;border-radius:14px;
+  font-size:17px;font-weight:700;margin-top:10px;
+  background:#111;color:#fff;cursor:pointer;
 }
-button.secondary{
-  background:#e9e9ed;
-  color:#111;
+button.secondary{background:#e9e9ed;color:#111}
+.note{font-size:13px;color:#666;line-height:1.55}
+.error{color:#b00020;font-size:13px;margin-top:8px;white-space:pre-wrap}
+.checks{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
+.check{
+  display:flex;align-items:center;gap:7px;font-weight:600
 }
-
-#now{
-  text-align:center;
-  font-size:36px;
-  font-weight:800;
-  padding:12px;
+.check input{width:auto;transform:scale(1.25)}
+#nowChord,#nowMelody{
+  text-align:center;font-size:30px;font-weight:800;padding:5px;
 }
-#status{
-  text-align:center;
-  color:#666;
-  font-size:14px;
-}
-.note{
-  font-size:13px;
-  color:#666;
-  line-height:1.55;
-}
-.error{
-  color:#b00020;
-  font-size:13px;
-  margin-top:8px;
-  white-space:pre-wrap;
-}
-.checkboxRow{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-top:14px;
-}
-.checkboxRow input{
-  width:auto;
-  transform:scale(1.3);
-}
+.nowLabel{text-align:center;font-size:12px;color:#777;margin-top:8px}
+#status{text-align:center;color:#666;font-size:14px;margin-top:8px}
 </style>
 </head>
 
 <body>
-
 <div class="wrap">
 
-<h1>🎹 コードプレーヤー</h1>
-
+<h1>🎼 コード＆メロディープレーヤー</h1>
 <div class="sub">
-自作曲のコード進行を、伴奏スタイルを変えながら確認できます。
+自作曲のコード伴奏とメロディーを同時に鳴らして確認できます。
 </div>
 
 <div class="card">
-
 <label>曲名</label>
-<input id="songName" placeholder="例：朝の歌">
+<input id="songName" placeholder="例：朝顔の歌">
+</div>
 
-<label style="margin-top:14px">コード進行</label>
+<div class="card">
+<label>コード進行</label>
 
 <textarea id="chords">F6 | Am7 | Bbmaj7 | C7
 Dm7 | Gm7 | C7 | F6</textarea>
@@ -129,6 +69,21 @@ Dm7 | Gm7 | C7 | F6</textarea>
 <div class="note">
 例：F6 | Gm7 | C7 | F6<br>
 拍数指定：F6:4 Gm7:2 C7:2 F6:4
+</div>
+</div>
+
+<div class="card">
+
+<label>メロディー</label>
+
+<textarea id="melody">A4 G4 F4 A4 | C5 Bb4 A4 G4
+F4 A4 G4 F4 | E4 G4 F4:2</textarea>
+
+<div class="note">
+例：A4 G4 F4 A4<br>
+A4:2 ＝ A4を2拍<br>
+F#4、Bb4にも対応<br>
+R ＝ 1拍休み、R:2 ＝ 2拍休み
 </div>
 
 <div id="error" class="error"></div>
@@ -138,14 +93,13 @@ Dm7 | Gm7 | C7 | F6</textarea>
 <div class="card">
 
 <div class="grid">
-
 <div>
 <label>BPM</label>
 <input id="bpm" type="number" min="30" max="240" value="84">
 </div>
 
 <div>
-<label>標準拍数</label>
+<label>コード標準拍数</label>
 <select id="beats">
 <option value="1">1拍</option>
 <option value="2">2拍</option>
@@ -153,7 +107,6 @@ Dm7 | Gm7 | C7 | F6</textarea>
 <option value="8">8拍</option>
 </select>
 </div>
-
 </div>
 
 <label style="margin-top:14px">伴奏スタイル</label>
@@ -164,9 +117,23 @@ Dm7 | Gm7 | C7 | F6</textarea>
 <option value="piano">🎹 ピアノ伴奏風</option>
 </select>
 
-<div class="checkboxRow">
+<div class="checks">
+
+<label class="check">
+<input type="checkbox" id="playChords" checked>
+伴奏
+</label>
+
+<label class="check">
+<input type="checkbox" id="playMelody" checked>
+メロディー
+</label>
+
+<label class="check">
 <input type="checkbox" id="loop">
-<label for="loop" style="margin:0">繰り返し再生</label>
+繰り返し
+</label>
+
 </div>
 
 <button id="test" class="secondary">🔊 テスト音</button>
@@ -192,8 +159,12 @@ Dm7 | Gm7 | C7 | F6</textarea>
 
 <div class="card">
 
-<div class="note" style="text-align:center">演奏中のコード</div>
-<div id="now">—</div>
+<div class="nowLabel">コード</div>
+<div id="nowChord">—</div>
+
+<div class="nowLabel">メロディー</div>
+<div id="nowMelody">—</div>
+
 <div id="status">停止中</div>
 
 </div>
@@ -235,22 +206,17 @@ const TYPES=[
 
 async function initAudio(){
 
-const AC=
-window.AudioContext ||
-window.webkitAudioContext;
+const AC=window.AudioContext || window.webkitAudioContext;
 
 if(!AC){
 throw new Error("このブラウザは音声再生に対応していません。");
 }
 
 if(!ctx){
-
 ctx=new AC();
-
 master=ctx.createGain();
 master.gain.value=.42;
 master.connect(ctx.destination);
-
 }
 
 if(ctx.state!=="running"){
@@ -259,88 +225,11 @@ await ctx.resume();
 
 }
 
-function parseChord(s){
-
-s=s
-.trim()
-.replace(/♭/g,"b")
-.replace(/♯/g,"#");
-
-const m=
-s.match(/^([A-Ga-g])([#b]?)(.*)$/);
-
-if(!m){
-throw new Error("コードを読めません: "+s);
+function freq(midi){
+return 440*Math.pow(2,(midi-69)/12);
 }
 
-const root=
-(m[1].toUpperCase()+m[2]).toUpperCase();
-
-if(!(root in N)){
-throw new Error("コードを読めません: "+s);
-}
-
-let suf=
-m[3]
-.trim()
-.replace(/^M7$/,"maj7");
-
-for(const [r,ints] of TYPES){
-
-if(r.test(suf)){
-
-return{
-symbol:s,
-root:N[root],
-ints
-};
-
-}
-
-}
-
-throw new Error("未対応コード: "+s);
-
-}
-
-function parseSeq(text,defBeats){
-
-return text
-.replace(/\n/g," | ")
-.split(/\s*\|\s*|\s+/)
-.filter(Boolean)
-.map(tok=>{
-
-let beats=defBeats;
-
-const x=
-tok.match(/^(.*?):(\d+(?:\.\d+)?)$/);
-
-if(x){
-tok=x[1];
-beats=Number(x[2]);
-}
-
-return{
-...parseChord(tok),
-beats
-};
-
-});
-
-}
-
-function freq(m){
-
-return 440*
-Math.pow(
-2,
-(m-69)/12
-);
-
-}
-
-function tone(f,start,dur,volume=.16,type="triangle"){
+function tone(f,start,dur,volume=.15,type="triangle"){
 
 const o=ctx.createOscillator();
 const g=ctx.createGain();
@@ -357,18 +246,148 @@ start+.015
 
 g.gain.exponentialRampToValueAtTime(
 .0001,
-start+dur
+start+Math.max(.05,dur)
 );
 
 o.connect(g);
 g.connect(master);
 
 o.start(start);
-o.stop(start+dur+.03);
+o.stop(start+dur+.05);
 
 nodes.push(o);
 
 }
+
+/* ===== コード解析 ===== */
+
+function parseChord(s){
+
+s=s.trim()
+.replace(/♭/g,"b")
+.replace(/♯/g,"#");
+
+const m=s.match(/^([A-Ga-g])([#b]?)(.*)$/);
+
+if(!m){
+throw new Error("コードを読めません: "+s);
+}
+
+const root=(m[1].toUpperCase()+m[2]).toUpperCase();
+
+if(!(root in N)){
+throw new Error("コードを読めません: "+s);
+}
+
+let suffix=m[3].trim().replace(/^M7$/,"maj7");
+
+for(const [r,ints] of TYPES){
+
+if(r.test(suffix)){
+return{
+symbol:s,
+root:N[root],
+ints
+};
+}
+
+}
+
+throw new Error("未対応コード: "+s);
+
+}
+
+function parseChordSeq(text,defBeats){
+
+return text
+.replace(/\n/g," | ")
+.split(/\s*\|\s*|\s+/)
+.filter(Boolean)
+.map(token=>{
+
+let beats=defBeats;
+
+const x=token.match(/^(.*?):(\d+(?:\.\d+)?)$/);
+
+if(x){
+token=x[1];
+beats=Number(x[2]);
+}
+
+return{
+...parseChord(token),
+beats
+};
+
+});
+
+}
+
+/* ===== メロディー解析 ===== */
+
+function parseMelodyNote(token){
+
+let beats=1;
+
+const durationMatch=
+token.match(/^(.*?):(\d+(?:\.\d+)?)$/);
+
+if(durationMatch){
+token=durationMatch[1];
+beats=Number(durationMatch[2]);
+}
+
+if(/^R$/i.test(token)){
+return{
+symbol:"R",
+rest:true,
+beats
+};
+}
+
+token=token
+.replace(/♭/g,"b")
+.replace(/♯/g,"#");
+
+const m=
+token.match(/^([A-Ga-g])([#b]?)(-?\d)$/);
+
+if(!m){
+throw new Error("メロディー音を読めません: "+token);
+}
+
+const name=(m[1].toUpperCase()+m[2]).toUpperCase();
+
+if(!(name in N)){
+throw new Error("メロディー音を読めません: "+token);
+}
+
+const octave=Number(m[3]);
+
+const midi=
+12*(octave+1)+N[name];
+
+return{
+symbol:token,
+rest:false,
+beats,
+midi
+};
+
+}
+
+function parseMelody(text){
+
+return text
+.replace(/\n/g," ")
+.replace(/\|/g," ")
+.split(/\s+/)
+.filter(Boolean)
+.map(parseMelodyNote);
+
+}
+
+/* ===== 伴奏 ===== */
 
 function blockChord(ch,start,dur){
 
@@ -379,7 +398,7 @@ tone(
 freq(base+i),
 start,
 dur*.92,
-.16,
+.13,
 "triangle"
 );
 });
@@ -391,19 +410,23 @@ function arpeggioChord(ch,start,dur){
 const base=60+ch.root;
 const notes=ch.ints.map(i=>base+i);
 
-const step=dur/notes.length;
+const count=Math.max(1,Math.round(dur/.35));
+const step=dur/count;
 
-notes.forEach((m,i)=>{
+for(let i=0;i<count;i++){
+
+const midi=
+notes[i % notes.length];
 
 tone(
-freq(m),
+freq(midi),
 start+i*step,
-Math.min(step*.9,.7),
-.22,
+Math.min(step*.82,.55),
+.18,
 "triangle"
 );
 
-});
+}
 
 }
 
@@ -411,64 +434,66 @@ function pianoChord(ch,start,dur){
 
 const base=60+ch.root;
 
-/* 左手ルート */
 tone(
 freq(base-12),
 start,
-Math.min(dur*.9,1.2),
-.20,
+Math.min(dur*.85,1.2),
+.19,
 "sine"
 );
 
-/* 右手コード */
-const right=
+const notes=
 ch.ints.map(i=>base+i);
 
-const beatLength=Math.min(.5,dur/4);
+const pulse=Math.min(.5,dur/4);
 
-let t=start;
+for(let t=0;t<dur-.05;t+=pulse){
 
-while(t<start+dur-.05){
-
-right.forEach((m,i)=>{
-
-const delay=
-i*0.025;
+notes.forEach((m,i)=>{
 
 tone(
 freq(m),
-t+delay,
-beatLength*.75,
-.12,
+start+t+i*.018,
+Math.min(pulse*.7,.38),
+.095,
 "triangle"
 );
 
 });
 
-t+=beatLength;
-
 }
 
 }
 
-function playChord(
-ch,
-start,
-dur,
-style
-){
+function scheduleChord(ch,start,dur,style){
 
 if(style==="arp"){
 arpeggioChord(ch,start,dur);
-}
-else if(style==="piano"){
+}else if(style==="piano"){
 pianoChord(ch,start,dur);
-}
-else{
+}else{
 blockChord(ch,start,dur);
 }
 
 }
+
+/* ===== メロディー音 ===== */
+
+function melodyTone(note,start,dur){
+
+if(note.rest)return;
+
+tone(
+freq(note.midi),
+start,
+dur*.88,
+.23,
+"sine"
+);
+
+}
+
+/* ===== 停止 ===== */
 
 function clearPlayback(){
 
@@ -489,72 +514,94 @@ playing=false;
 
 clearPlayback();
 
-document
-.getElementById("now")
-.textContent="—";
-
-document
-.getElementById("status")
-.textContent="停止中";
+document.getElementById("nowChord").textContent="—";
+document.getElementById("nowMelody").textContent="—";
+document.getElementById("status").textContent="停止中";
 
 }
+
+/* ===== 再生 ===== */
 
 async function startPlayback(){
 
 stopAll();
 
-document
-.getElementById("error")
-.textContent="";
+document.getElementById("error").textContent="";
 
 try{
 
 await initAudio();
 
 const bpm=
-Number(
-document.getElementById("bpm").value
-);
+Number(document.getElementById("bpm").value);
 
-const defBeats=
-Number(
-document.getElementById("beats").value
-);
+const defaultChordBeats=
+Number(document.getElementById("beats").value);
 
 const style=
 document.getElementById("style").value;
 
-const seq=
-parseSeq(
+const useChords=
+document.getElementById("playChords").checked;
+
+const useMelody=
+document.getElementById("playMelody").checked;
+
+if(!useChords && !useMelody){
+throw new Error("伴奏またはメロディーを選択してください。");
+}
+
+const beatSec=60/bpm;
+
+let chords=[];
+let melody=[];
+
+if(useChords){
+
+chords=
+parseChordSeq(
 document.getElementById("chords").value,
-defBeats
+defaultChordBeats
 );
 
-if(!seq.length){
-throw new Error("コードを入力してください。");
+}
+
+if(useMelody){
+
+melody=
+parseMelody(
+document.getElementById("melody").value
+);
+
 }
 
 playing=true;
 
-const beat=
-60/bpm;
+const startTime=
+ctx.currentTime+.10;
 
-let when=
-ctx.currentTime+.08;
+/* コード */
 
-let ms=80;
+let chordSeconds=0;
 
-seq.forEach((ch,i)=>{
+if(useChords){
 
-const dur=
-ch.beats*beat;
+let position=0;
 
-playChord(
+chords.forEach((ch,i)=>{
+
+const duration=
+ch.beats*beatSec;
+
+scheduleChord(
 ch,
-when,
-dur,
+startTime+position,
+duration,
 style
 );
+
+const ms=
+100+position*1000;
 
 timers.push(
 
@@ -563,22 +610,42 @@ setTimeout(()=>{
 if(!playing)return;
 
 document
-.getElementById("now")
+.getElementById("nowChord")
 .textContent=ch.symbol;
-
-document
-.getElementById("status")
-.textContent=
-`再生中 ${i+1}/${seq.length}`;
 
 },ms)
 
 );
 
-when+=dur;
-ms+=dur*1000;
+position+=duration;
 
 });
+
+chordSeconds=position;
+
+}
+
+/* メロディー */
+
+let melodySeconds=0;
+
+if(useMelody){
+
+let position=0;
+
+melody.forEach(note=>{
+
+const duration=
+note.beats*beatSec;
+
+melodyTone(
+note,
+startTime+position,
+duration
+);
+
+const ms=
+100+position*1000;
 
 timers.push(
 
@@ -586,12 +653,42 @@ setTimeout(()=>{
 
 if(!playing)return;
 
-const loop=
-document.getElementById("loop").checked;
+document
+.getElementById("nowMelody")
+.textContent=
+note.rest ? "休符" : note.symbol;
 
-if(loop){
+},ms)
 
-clearPlayback();
+);
+
+position+=duration;
+
+});
+
+melodySeconds=position;
+
+}
+
+const totalSeconds=
+Math.max(
+chordSeconds,
+melodySeconds
+);
+
+document
+.getElementById("status")
+.textContent="再生中";
+
+timers.push(
+
+setTimeout(()=>{
+
+if(!playing)return;
+
+if(
+document.getElementById("loop").checked
+){
 
 startPlayback();
 
@@ -600,7 +697,11 @@ startPlayback();
 playing=false;
 
 document
-.getElementById("now")
+.getElementById("nowChord")
+.textContent="—";
+
+document
+.getElementById("nowMelody")
 .textContent="—";
 
 document
@@ -609,7 +710,9 @@ document
 
 }
 
-},ms+50)
+},
+100+totalSeconds*1000
+)
 
 );
 
@@ -623,26 +726,27 @@ document
 
 }
 
+/* ===== ボタン ===== */
+
 document
 .getElementById("test")
 .onclick=
 async()=>{
 
-document
-.getElementById("error")
-.textContent="";
+document.getElementById("error").textContent="";
 
 try{
 
 await initAudio();
 
-const t=
-ctx.currentTime+.03;
+const t=ctx.currentTime+.03;
 
 [261.63,329.63,392]
 .forEach(f=>{
-tone(f,t,.7,.16);
+tone(f,t,.7,.14);
 });
+
+tone(523.25,t+.8,.7,.23,"sine");
 
 document
 .getElementById("status")
@@ -666,10 +770,7 @@ document
 .getElementById("stop")
 .onclick=stopAll;
 
-
-/* --------------------
-   曲の保存
--------------------- */
+/* ===== 保存 ===== */
 
 function getSongs(){
 
@@ -704,15 +805,13 @@ document.getElementById("savedSongs");
 select.innerHTML=
 '<option value="">保存した曲を選択</option>';
 
-const songs=
-getSongs();
+const songs=getSongs();
 
 Object.keys(songs)
 .sort()
 .forEach(name=>{
 
-const op=
-document.createElement("option");
+const op=document.createElement("option");
 
 op.value=name;
 op.textContent=name;
@@ -728,10 +827,8 @@ document
 .onclick=()=>{
 
 const name=
-document
-.getElementById("songName")
-.value
-.trim();
+document.getElementById("songName")
+.value.trim();
 
 if(!name){
 
@@ -740,13 +837,15 @@ return;
 
 }
 
-const songs=
-getSongs();
+const songs=getSongs();
 
 songs[name]={
 
 chords:
 document.getElementById("chords").value,
+
+melody:
+document.getElementById("melody").value,
 
 bpm:
 document.getElementById("bpm").value,
@@ -776,39 +875,21 @@ document
 .onclick=()=>{
 
 const name=
-document
-.getElementById("savedSongs")
-.value;
+document.getElementById("savedSongs").value;
 
 if(!name)return;
 
-const songs=
-getSongs();
-
-const s=
-songs[name];
+const songs=getSongs();
+const s=songs[name];
 
 if(!s)return;
 
-document
-.getElementById("songName")
-.value=name;
-
-document
-.getElementById("chords")
-.value=s.chords;
-
-document
-.getElementById("bpm")
-.value=s.bpm;
-
-document
-.getElementById("beats")
-.value=s.beats;
-
-document
-.getElementById("style")
-.value=s.style || "block";
+document.getElementById("songName").value=name;
+document.getElementById("chords").value=s.chords || "";
+document.getElementById("melody").value=s.melody || "";
+document.getElementById("bpm").value=s.bpm || 84;
+document.getElementById("beats").value=s.beats || 4;
+document.getElementById("style").value=s.style || "block";
 
 };
 
@@ -817,25 +898,19 @@ document
 .onclick=()=>{
 
 const name=
-document
-.getElementById("savedSongs")
-.value;
+document.getElementById("savedSongs").value;
 
 if(!name)return;
 
-if(!confirm(
-`「${name}」を削除しますか？`
-)){
+if(!confirm(`「${name}」を削除しますか？`)){
 return;
 }
 
-const songs=
-getSongs();
+const songs=getSongs();
 
 delete songs[name];
 
 saveSongs(songs);
-
 updateSongList();
 
 };
