@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>コード＆メロディープレーヤー v3.0</title>
+<title>コード＆メロディープレーヤー v3.2</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f4f4f6;margin:0;color:#111}
 .wrap{max-width:760px;margin:auto;padding:18px 14px 40px}
@@ -21,9 +21,14 @@ button.secondary{background:#e9e9ed;color:#111}.checks{display:flex;gap:18px;fle
 </head>
 <body>
 <div class="wrap">
-<h1>🎹 コード＆メロディープレーヤー v3.0</h1>
+<h1>🎹 コード＆メロディープレーヤー v3.2</h1>
 <div class="sub">録音ピアノ音源で、曲集や自作曲のコードとメロディーを演奏できます。</div>
-<div id="sampleStatus" class="note" style="margin-top:6px">🎹 ピアノ音源を読み込み中…</div>
+<div id="sampleStatus" class="note" style="margin-top:6px">🎹 ピアノ音源：未読み込み</div>
+<div class="card" id="audioUnlockCard">
+<label>📱 スマホで最初に1回だけ</label>
+<button id="enableAudio">🔊 音を有効にする</button>
+<div id="audioStatus" class="note" style="margin-top:8px">スマホでは最初にこのボタンをタップしてください。</div>
+</div>
 
 <div class="card">
 <label>🎼 曲集から選ぶ</label>
@@ -111,6 +116,7 @@ F4 A4 G4 F4 | E4 G4 F4:2</textarea>
 <script>
 let sampler=null;
 let samplerReady=false;
+let audioUnlocked=false;
 let playing=false;
 let uiTimers=[];
 let lastVoicing=null;
@@ -166,26 +172,45 @@ const SAMPLE_URLS = {
   "C8":"C8.mp3"
 };
 
-function initSampler(){
+async function initSampler(){
+  if(sampler && samplerReady) return true;
+
   const status=document.getElementById("sampleStatus");
   status.textContent="🎹 ピアノ音源を読み込み中…";
 
-  sampler=new Tone.Sampler({
-    urls:SAMPLE_URLS,
-    release:1.1,
-    baseUrl:"https://tonejs.github.io/audio/salamander/",
-    onload:()=>{
-      samplerReady=true;
-      status.textContent="✅ 録音ピアノ音源の準備完了";
-    },
-    onerror:(err)=>{
-      samplerReady=false;
-      status.textContent="⚠️ ピアノ音源の読み込みに失敗しました。再読み込みしてください。";
-      console.error(err);
+  try{
+    if(!window.Tone){
+      throw new Error("Tone.jsを読み込めませんでした。");
     }
-  }).toDestination();
 
-  sampler.volume.value=-6;
+    sampler=new Tone.Sampler({
+      urls:SAMPLE_URLS,
+      release:1.1,
+      baseUrl:"https://tonejs.github.io/audio/salamander/",
+      onload:()=>{
+        samplerReady=true;
+        status.textContent="✅ 録音ピアノ音源の準備完了";
+      },
+      onerror:(err)=>{
+        samplerReady=false;
+        status.textContent="⚠️ ピアノ音源の読み込みに失敗しました。";
+        console.error(err);
+      }
+    }).toDestination();
+
+    sampler.volume.value=-6;
+
+    await Tone.loaded();
+    samplerReady=true;
+    status.textContent="✅ 録音ピアノ音源の準備完了";
+    return true;
+
+  }catch(e){
+    samplerReady=false;
+    status.textContent="⚠️ ピアノ音源を読み込めませんでした。";
+    console.error(e);
+    return false;
+  }
 }
 
 function midiToNote(midi){
@@ -442,14 +467,68 @@ function stopAll(){
   lastVoicing=null;
 }
 
+async function unlockAudio(){
+  const status=document.getElementById("audioStatus");
+  const button=document.getElementById("enableAudio");
+
+  try{
+    status.textContent="音声を有効化しています…";
+
+    if(!window.Tone){
+      throw new Error("音声ライブラリを読み込めませんでした。ページを再読み込みしてください。");
+    }
+
+    await Tone.start();
+
+    const raw=Tone.getContext().rawContext;
+    if(raw && raw.state==="suspended"){
+      await raw.resume();
+    }
+
+    // iOS Safariでオーディオ出力経路を確実に開くための短い無音。
+    const osc=new Tone.Oscillator(440,"sine").toDestination();
+    osc.volume.value=-60;
+    osc.start();
+    osc.stop("+0.03");
+
+    status.textContent="ピアノ音源を読み込んでいます…";
+    const loaded=await initSampler();
+
+    if(!loaded){
+      throw new Error("ピアノ音源の読み込みに失敗しました。");
+    }
+
+    audioUnlocked=true;
+    status.textContent="✅ 音を有効にしました。再生できます。";
+    button.textContent="✅ 音声有効";
+    button.disabled=true;
+
+    sampler.triggerAttackRelease("C5",0.35,Tone.now()+0.03,0.65);
+    return true;
+
+  }catch(e){
+    audioUnlocked=false;
+    status.textContent="⚠️ "+e.message;
+    console.error(e);
+    return false;
+  }
+}
+
 async function ensureAudio(){
-  await Tone.start();
+  if(!audioUnlocked){
+    throw new Error("先に「🔊 音を有効にする」をタップしてください。");
+  }
+
+  const raw=Tone.getContext().rawContext;
+  if(raw && raw.state!=="running"){
+    await raw.resume();
+  }
 
   if(!samplerReady){
-    document.getElementById("status").textContent="ピアノ音源を読み込み中です…";
-    await Tone.loaded();
-    samplerReady=true;
-    document.getElementById("sampleStatus").textContent="✅ 録音ピアノ音源の準備完了";
+    const loaded=await initSampler();
+    if(!loaded){
+      throw new Error("ピアノ音源を読み込めませんでした。");
+    }
   }
 }
 
@@ -574,6 +653,10 @@ async function startPlayback(){
   }
 }
 
+document.getElementById("enableAudio").onclick=async()=>{
+  await unlockAudio();
+};
+
 document.getElementById("test").onclick=async()=>{
   document.getElementById("error").textContent="";
 
@@ -604,15 +687,21 @@ document.getElementById("test").onclick=async()=>{
 document.getElementById("play").onclick=startPlayback;
 document.getElementById("stop").onclick=stopAll;
 
-document.getElementById("loadLibrarySong").onclick=()=>{
-  const key=document.getElementById("librarySongs").value;
+function loadSelectedLibrarySong(){
+  const selector=document.getElementById("librarySongs");
+  const key=selector.value;
 
   if(!key){
-    alert("曲を選んでください。");
+    document.getElementById("status").textContent="曲を選んでください";
     return;
   }
 
   const song=SONGBOOK[key];
+
+  if(!song){
+    document.getElementById("error").textContent="曲データを読み込めませんでした。";
+    return;
+  }
 
   document.getElementById("songName").value=song.name;
   document.getElementById("chords").value=song.chords;
@@ -621,12 +710,17 @@ document.getElementById("loadLibrarySong").onclick=()=>{
   document.getElementById("style").value=song.style;
   document.getElementById("feel").value=
     key==="saints" ? "swing" : "straight";
+
   document.getElementById("playChords").checked=true;
   document.getElementById("playMelody").checked=true;
   document.getElementById("loop").checked=false;
+  document.getElementById("error").textContent="";
   document.getElementById("status").textContent=
-    song.name+" を読み込みました";
-};
+    "「"+song.name+"」を読み込みました";
+}
+
+document.getElementById("loadLibrarySong").addEventListener("click",loadSelectedLibrarySong);
+document.getElementById("librarySongs").addEventListener("change",loadSelectedLibrarySong);
 
 function getSongs(){
   try{
@@ -710,10 +804,33 @@ document.getElementById("deleteSong").onclick=()=>{
   updateSongList();
 };
 
-initSampler();
 updateSongList();
+
+if(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){
+  document.getElementById("audioStatus").textContent=
+    "スマホでは最初に「🔊 音を有効にする」を1回タップしてください。";
+}else{
+  document.getElementById("audioStatus").textContent=
+    "PCではそのまま再生できます。";
+}
 </script>
 </body>
 </html>
-index_v3_piano.html
+index_v3_2_mobile_fixed.html
 HTML
+ダメ　読み込めません　なりません
+15s考えました
+
+まず Codespacesの index.html が本当にv3.2になっているか確認しましょう。
+
+一番上に、
+
+コード＆メロディープレーヤー v3.2
+
+と書いてあるはずです。
+
+もし v3.0 なら、v3.2への置き換えが完了していません。v3.2 になっている場合は、Commit → PushがGitHubのmainまで届いていない状態です。
+
+GitHubの画面を開いて index.html の先頭が見えるスクリーンショットを送ってください。そこで v3.2がGitHubに反映されているかを確認してから、スマホの問題を切り分けます。
+
+ここでは新しい修正版はまだ作りません。まず「実際にどの版が公開されているか」を揃えるのが先です。
