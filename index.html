@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111111">
-<title>コード＆メロディープレーヤー v3.3</title>
+<title>コード＆メロディープレーヤー v3.4</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f4f4f6;margin:0;color:#111}
 .wrap{max-width:760px;margin:auto;padding:18px 14px 40px}
@@ -12,30 +11,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sa
 h1{font-size:27px;margin:6px 0}.sub,.note{color:#666;line-height:1.55}.sub{font-size:14px}.note{font-size:13px}
 label{display:block;font-weight:700;margin:0 0 7px}
 textarea,input,select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d8d8dd;border-radius:12px;font:inherit;background:#fff}
-textarea{min-height:105px;line-height:1.55}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+textarea{min-height:105px;line-height:1.55}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 button{width:100%;padding:15px;border:0;border-radius:14px;font-size:17px;font-weight:700;margin-top:10px;background:#111;color:#fff}
 button.secondary{background:#e9e9ed;color:#111}
-button:disabled{opacity:.55}
 .checks{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}.check{display:flex;align-items:center;gap:7px;font-weight:600}.check input{width:auto;transform:scale(1.25)}
 #nowChord,#nowMelody{text-align:center;font-size:30px;font-weight:800;padding:5px}.nowLabel{text-align:center;font-size:12px;color:#777;margin-top:8px}
 #status{text-align:center;color:#666;font-size:14px;margin-top:8px}.error{color:#b00020;font-size:13px;margin-top:8px;white-space:pre-wrap}
+#debug{font-size:12px;white-space:pre-wrap;background:#f6f6f8;padding:10px;border-radius:10px;color:#444}
 .ok{color:#176b3a}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>🎹 コード＆メロディープレーヤー v3.3</h1>
-<div class="sub">スマホ優先版。録音ピアノ音源をWeb Audio APIで直接再生します。</div>
+<h1>🎹 コード＆メロディープレーヤー v3.4</h1>
+<div class="sub">iPhone動作確認を優先した診断版です。</div>
 
 <div class="card">
-<label>📱 最初に1回だけ</label>
-<button id="enableAudio">🔊 音を有効にする</button>
-<div id="audioStatus" class="note" style="margin-top:8px">iPhoneでは最初にこのボタンをタップしてください。</div>
+<label>① まず音声テスト</label>
+<button id="enableAudio" onclick="enableAudioNow()">🔊 音を有効にする</button>
+<div id="audioStatus" class="note" style="margin-top:8px">押した瞬間に短い「ピー」という確認音が鳴ります。</div>
 </div>
 
 <div class="card">
-<label>🎼 曲集から選ぶ</label>
-<select id="librarySongs">
+<label>② 曲集から選ぶ</label>
+<select id="librarySongs" onchange="loadLibrary(this.value)">
 <option value="">曲を選んでください</option>
 <option value="saints">聖者の行進</option>
 <option value="twinkle">きらきら星</option>
@@ -48,63 +48,31 @@ button:disabled{opacity:.55}
 <option value="auld">蛍の光</option>
 <option value="greensleeves">グリーンスリーブス</option>
 </select>
-<button id="loadLibrarySong">🎵 この曲を読み込む</button>
-<div class="note">曲を選ぶだけでも自動的に読み込みます。</div>
+<button onclick="loadLibrary(document.getElementById('librarySongs').value)">🎵 この曲を読み込む</button>
+<div id="loadStatus" class="note" style="margin-top:8px">曲を選ぶとここに読み込み結果を表示します。</div>
 </div>
 
-<div class="card"><label>曲名</label><input id="songName" placeholder="例：朝顔の歌"></div>
-
-<div class="card">
-<label>コード進行</label>
-<textarea id="chords">F6 | Am7 | Bbmaj7 | C7
-Dm7 | Gm7 | C7 | F6</textarea>
-<div class="note">例：F6 | Gm7 | C7 | F6　拍数指定：F6:4 Gm7:2 C7:2 F6:4</div>
-</div>
-
-<div class="card">
-<label>メロディー</label>
-<textarea id="melody">A4 G4 F4 A4 | C5 Bb4 A4 G4
-F4 A4 G4 F4 | E4 G4 F4:2</textarea>
-<div class="note">A4:2＝2拍、F#4・Bb4対応、R＝休符</div>
-<div id="error" class="error"></div>
-</div>
+<div class="card"><label>曲名</label><input id="songName"></div>
+<div class="card"><label>コード進行</label><textarea id="chords"></textarea></div>
+<div class="card"><label>メロディー</label><textarea id="melody"></textarea><div id="error" class="error"></div></div>
 
 <div class="card">
 <div class="grid">
 <div><label>BPM</label><input id="bpm" type="number" min="30" max="240" value="84"></div>
 <div><label>コード標準拍数</label><select id="beats"><option value="1">1拍</option><option value="2">2拍</option><option value="4" selected>4拍</option><option value="8">8拍</option></select></div>
 </div>
-
 <label style="margin-top:14px">伴奏スタイル</label>
-<select id="style">
-<option value="block">🎵 ジャーン</option>
-<option value="arp">🎶 アルペジオ</option>
-<option value="piano">🎹 ピアノ伴奏風</option>
-</select>
-
+<select id="style"><option value="block">🎵 ジャーン</option><option value="arp">🎶 アルペジオ</option><option value="piano">🎹 ピアノ伴奏風</option></select>
 <label style="margin-top:14px">演奏フィール</label>
-<select id="feel">
-<option value="straight" selected>ストレート</option>
-<option value="swing">スウィング</option>
-</select>
-
+<select id="feel"><option value="straight">ストレート</option><option value="swing">スウィング</option></select>
 <div class="checks">
 <label class="check"><input type="checkbox" id="playChords" checked>伴奏</label>
 <label class="check"><input type="checkbox" id="playMelody" checked>メロディー</label>
 <label class="check"><input type="checkbox" id="loop">繰り返し</label>
 </div>
-
-<button id="test" class="secondary">🔊 テスト音</button>
-<button id="play">▶ 再生</button>
-<button id="stop" class="secondary">■ 停止</button>
-</div>
-
-<div class="card">
-<label>曲の保存</label>
-<button id="saveSong">💾 この曲を保存</button>
-<select id="savedSongs" style="margin-top:10px"><option value="">保存した曲を選択</option></select>
-<button id="loadSong" class="secondary">📂 呼び出す</button>
-<button id="deleteSong" class="secondary">🗑 保存曲を削除</button>
+<button id="test" class="secondary" onclick="testPiano()">🎹 ピアノ音テスト</button>
+<button id="play" onclick="startPlayback()">▶ 再生</button>
+<button id="stop" class="secondary" onclick="stopAll()">■ 停止</button>
 </div>
 
 <div class="card">
@@ -114,24 +82,15 @@ F4 A4 G4 F4 | E4 G4 F4:2</textarea>
 </div>
 
 <div class="card">
-<div class="note">
-音源：Salamander Grand Piano（Alexander Holm）/ CC BY 3.0。<br>
-v3.3ではTone.jsを使わず、ブラウザ標準のWeb Audio APIで直接再生します。
-</div>
+<label>診断表示</label>
+<div id="debug">ページを読み込みました。</div>
 </div>
 </div>
 
 <script>
 "use strict";
-
-let audioCtx=null;
-let masterGain=null;
-let audioEnabled=false;
-let samplesReady=false;
-let activeSources=[];
-let timers=[];
-let playbackToken=0;
-let lastVoicing=null;
+const $=id=>document.getElementById(id);
+function log(s){$("debug").textContent += "\n"+s;}
 
 const N={"C":0,"C#":1,"DB":1,"D":2,"D#":3,"EB":3,"E":4,"F":5,"F#":6,"GB":6,"G":7,"G#":8,"AB":8,"A":9,"A#":10,"BB":10,"B":11};
 const TYPES=[[/^maj7$/i,[0,4,7,11]],[/^m7$/i,[0,3,7,10]],[/^7$/i,[0,4,7,10]],[/^m6$/i,[0,3,7,9]],[/^6$/i,[0,4,7,9]],[/^m$/i,[0,3,7]],[/^sus4$/i,[0,5,7]],[/^sus2$/i,[0,2,7]],[/^add9$/i,[0,4,7,14]],[/^dim$/i,[0,3,6]],[/^aug$/i,[0,4,8]],[/^$/,[0,4,7]]];
@@ -149,365 +108,149 @@ auld:{name:"蛍の光",bpm:82,style:"piano",feel:"straight",chords:"C:4 | G7:4 |
 greensleeves:{name:"グリーンスリーブス",bpm:88,style:"arp",feel:"straight",chords:"Am:4 | G:4 | Am:4 | E7:4 | Am:4 | G:4 | F:4 | E7:4",melody:"A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G4:2 A4 | B4 E4:3 | A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G#4 A4:2 | A4:4"}
 };
 
-const SAMPLE_BASE="https://tonejs.github.io/audio/salamander/";
-const SAMPLE_DEFS=[
-  {midi:36,file:"C2.mp3"},
-  {midi:48,file:"C3.mp3"},
-  {midi:60,file:"C4.mp3"},
-  {midi:72,file:"C5.mp3"},
-  {midi:84,file:"C6.mp3"}
-];
-const sampleBuffers=new Map();
-
-function $(id){return document.getElementById(id)}
-
-async function ensureContext(){
-  const AC=window.AudioContext||window.webkitAudioContext;
-  if(!AC) throw new Error("このブラウザはWeb Audioに対応していません。");
-  if(!audioCtx){
-    audioCtx=new AC();
-    masterGain=audioCtx.createGain();
-    masterGain.gain.value=.80;
-    masterGain.connect(audioCtx.destination);
-  }
-  if(audioCtx.state!=="running"){
-    await audioCtx.resume();
-  }
-}
-
-async function fetchDecode(url){
-  const res=await fetch(url,{mode:"cors",cache:"force-cache"});
-  if(!res.ok) throw new Error("音源取得エラー: "+res.status);
-  const ab=await res.arrayBuffer();
-  return await audioCtx.decodeAudioData(ab);
-}
-
-async function loadSamples(){
-  if(samplesReady) return;
-  $("audioStatus").textContent="🎹 ピアノ音源を読み込み中…";
-  for(const def of SAMPLE_DEFS){
-    if(!sampleBuffers.has(def.midi)){
-      const buf=await fetchDecode(SAMPLE_BASE+def.file);
-      sampleBuffers.set(def.midi,buf);
-    }
-  }
-  samplesReady=true;
-  $("audioStatus").textContent="✅ 録音ピアノ音源の準備完了";
-  $("audioStatus").classList.add("ok");
-}
-
-function nearestSample(midi){
-  let best=SAMPLE_DEFS[0];
-  let dist=Infinity;
-  for(const s of SAMPLE_DEFS){
-    const d=Math.abs(midi-s.midi);
-    if(d<dist){dist=d;best=s}
-  }
-  return best;
-}
-
-function playSample(midi,start,dur,volume=.7){
-  const s=nearestSample(midi);
-  const buf=sampleBuffers.get(s.midi);
-  if(!buf) return null;
-
-  const src=audioCtx.createBufferSource();
-  const gain=audioCtx.createGain();
-
-  src.buffer=buf;
-  src.playbackRate.value=Math.pow(2,(midi-s.midi)/12);
-
-  const t=Math.max(audioCtx.currentTime,start);
-  gain.gain.setValueAtTime(.0001,t);
-  gain.gain.exponentialRampToValueAtTime(Math.max(.02,volume),t+.012);
-  gain.gain.exponentialRampToValueAtTime(.0001,t+Math.max(.10,dur));
-
-  src.connect(gain);
-  gain.connect(masterGain);
-  src.start(t);
-  src.stop(t+Math.max(.12,dur)+.08);
-
-  activeSources.push(src);
-  src.onended=()=>{
-    activeSources=activeSources.filter(x=>x!==src);
-    try{src.disconnect();gain.disconnect()}catch(e){}
-  };
-  return src;
-}
-
-function parseChord(s){
-  s=s.trim().replace(/♭/g,"b").replace(/♯/g,"#");
-  const m=s.match(/^([A-Ga-g])([#b]?)(.*)$/);
-  if(!m) throw new Error("コードを読めません: "+s);
-  const root=(m[1].toUpperCase()+m[2]).toUpperCase();
-  if(!(root in N)) throw new Error("コードを読めません: "+s);
-  let suffix=m[3].trim().replace(/^M7$/,"maj7");
-  for(const [r,ints] of TYPES){
-    if(r.test(suffix)) return {symbol:s,root:N[root],ints};
-  }
-  throw new Error("未対応コード: "+s);
-}
-
-function parseChordSeq(text,defBeats){
-  return text.replace(/\n/g," | ").split(/\s*\|\s*|\s+/).filter(Boolean).map(token=>{
-    let b=defBeats;
-    const x=token.match(/^(.*?):(\d*\.?\d+)$/);
-    if(x){token=x[1];b=Number(x[2])}
-    return {...parseChord(token),beats:b};
-  });
-}
-
-function parseMelodyNote(token){
-  let b=1;
-  const x=token.match(/^(.*?):(\d*\.?\d+)$/);
-  if(x){token=x[1];b=Number(x[2])}
-  if(/^R$/i.test(token)) return {symbol:"R",rest:true,beats:b};
-  token=token.replace(/♭/g,"b").replace(/♯/g,"#");
-  const m=token.match(/^([A-Ga-g])([#b]?)(-?\d)$/);
-  if(!m) throw new Error("メロディー音を読めません: "+token);
-  const name=(m[1].toUpperCase()+m[2]).toUpperCase();
-  if(!(name in N)) throw new Error("メロディー音を読めません: "+token);
-  return {symbol:token,rest:false,beats:b,midi:12*(Number(m[3])+1)+N[name]};
-}
-
-function parseMelody(text){
-  return text.replace(/\n/g," ").replace(/\|/g," ").split(/\s+/).filter(Boolean).map(parseMelodyNote);
-}
-
-function candidateVoicings(ch){
-  const raw=ch.ints.map(i=>60+ch.root+i),out=[];
-  for(let inv=0;inv<raw.length;inv++){
-    let v=raw.slice();
-    for(let i=0;i<inv;i++) v[i]+=12;
-    v=v.sort((a,b)=>a-b);
-    [-12,0,12].forEach(sh=>out.push(v.map(n=>n+sh)));
-  }
-  return out.filter(v=>Math.min(...v)>=45 && Math.max(...v)<=76);
-}
-
-function chooseVoicing(ch){
-  const candidates=candidateVoicings(ch);
-  if(!lastVoicing){
-    const chosen=candidates.sort((a,b)=>{
-      const ca=a.reduce((x,y)=>x+y,0)/a.length;
-      const cb=b.reduce((x,y)=>x+y,0)/b.length;
-      return Math.abs(ca-60)-Math.abs(cb-60);
-    })[0];
-    lastVoicing=chosen.slice(); return chosen;
-  }
-  function score(v){
-    let s=0;
-    const a=v.slice().sort((x,y)=>x-y),b=lastVoicing.slice().sort((x,y)=>x-y);
-    for(let i=0;i<Math.min(a.length,b.length);i++) s+=Math.abs(a[i]-b[i]);
-    return s+Math.abs(a.length-b.length)*3;
-  }
-  const chosen=candidates.sort((a,b)=>score(a)-score(b))[0];
-  lastVoicing=chosen.slice(); return chosen;
-}
-
-function accent(beatPos,base){
-  const p=((beatPos%4)+4)%4;
-  if(p<.05)return Math.min(1,base*1.13);
-  if(Math.abs(p-2)<.05)return Math.min(1,base*1.04);
-  return base*.91;
-}
-
-function scheduleBlock(ch,start,dur,beatPos){
-  const notes=chooseVoicing(ch),vel=accent(beatPos,.58);
-  notes.forEach((m,i)=>playSample(m,start+i*.012,dur*.88,vel));
-}
-
-function scheduleArp(ch,start,dur,beatSec,feel,beatPos){
-  const notes=chooseVoicing(ch);
-  let t=0,i=0;
-  while(t<dur-.03){
-    let step=beatSec/2;
-    if(feel==="swing") step=(i%2===0)?beatSec*(2/3):beatSec*(1/3);
-    playSample(notes[i%notes.length],start+t,Math.min(step*.80,.48),accent(beatPos+t/beatSec,.64));
-    t+=step;i++;
-  }
-}
-
-function schedulePiano(ch,start,dur,beatSec,feel,beatPos){
-  const notes=chooseVoicing(ch),bass=48+ch.root;
-  let b=0;
-  while(b*beatSec<dur-.03){
-    const t=b*beatSec,vel=accent(beatPos+b,.58);
-    playSample(bass-(b%4===0?12:0),start+t,Math.min(beatSec*.82,1.0),vel);
-    const off=feel==="swing"?beatSec*(2/3):beatSec*.5;
-    notes.forEach((m,i)=>playSample(m,start+t+off+i*.01,Math.min(beatSec*.34,.38),vel*.72));
-    b++;
-  }
-}
-
-function stopAll(){
-  playbackToken++;
-  timers.forEach(clearTimeout);timers=[];
-  activeSources.forEach(s=>{try{s.stop()}catch(e){}});
-  activeSources=[];
-  $("nowChord").textContent="—";
-  $("nowMelody").textContent="—";
-  $("status").textContent="停止中";
-  lastVoicing=null;
-}
-
-async function startPlayback(){
-  stopAll();
-  $("error").textContent="";
-  const token=playbackToken;
-  try{
-    if(!audioEnabled) throw new Error("先に「🔊 音を有効にする」を押してください。");
-    await ensureContext();
-    if(!samplesReady) await loadSamples();
-
-    const bpm=Number($("bpm").value),beatSec=60/bpm,defBeats=Number($("beats").value);
-    const useChords=$("playChords").checked,useMelody=$("playMelody").checked;
-    const style=$("style").value,feel=$("feel").value;
-    if(!useChords&&!useMelody) throw new Error("伴奏またはメロディーを選択してください。");
-
-    const start=audioCtx.currentTime+.10;
-    let chordSec=0,melodySec=0;
-    lastVoicing=null;
-
-    if(useChords){
-      let pos=0,beatPos=0;
-      for(const ch of parseChordSeq($("chords").value,defBeats)){
-        const dur=ch.beats*beatSec;
-        if(style==="arp")scheduleArp(ch,start+pos,dur,beatSec,feel,beatPos);
-        else if(style==="piano")schedulePiano(ch,start+pos,dur,beatSec,feel,beatPos);
-        else scheduleBlock(ch,start+pos,dur,beatPos);
-
-        timers.push(setTimeout(()=>{if(token===playbackToken)$("nowChord").textContent=ch.symbol},(pos+.1)*1000));
-        pos+=dur;beatPos+=ch.beats;
-      }
-      chordSec=pos;
-    }
-
-    if(useMelody){
-      let pos=0,beatPos=0;
-      for(const note of parseMelody($("melody").value)){
-        let st=pos,dur=note.beats*beatSec;
-        if(feel==="swing"&&Math.abs(note.beats-.5)<.001){
-          if((Math.round(beatPos*2)%2)===1)st+=beatSec/6;
-          dur*=.82;
-        }
-        if(!note.rest)playSample(note.midi,start+st,dur*.80,accent(beatPos,.76));
-        timers.push(setTimeout(()=>{if(token===playbackToken)$("nowMelody").textContent=note.rest?"休符":note.symbol},(st+.1)*1000));
-        pos+=note.beats*beatSec;beatPos+=note.beats;
-      }
-      melodySec=pos;
-    }
-
-    $("status").textContent=feel==="swing"?"再生中（スウィング）":"再生中";
-    const total=Math.max(chordSec,melodySec);
-
-    timers.push(setTimeout(()=>{
-      if(token!==playbackToken)return;
-      if($("loop").checked)startPlayback();
-      else{
-        $("nowChord").textContent="—";$("nowMelody").textContent="—";$("status").textContent="再生終了";lastVoicing=null;
-      }
-    },(total+.2)*1000));
-
-  }catch(e){
-    $("error").textContent=e.message;
-    $("status").textContent="再生できませんでした";
-  }
-}
-
-async function enableAudio(){
-  $("error").textContent="";
-  try{
-    $("audioStatus").textContent="音声を有効化しています…";
-    await ensureContext();
-
-    // iPhone SafariでAudioContextを確実に開くための極小ビープ
-    const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
-    g.gain.value=.00001;
-    osc.connect(g);g.connect(masterGain);
-    osc.start();osc.stop(audioCtx.currentTime+.03);
-
-    audioEnabled=true;
-    $("audioStatus").textContent="🎹 ピアノ音源を準備しています…";
-    await loadSamples();
-
-    $("audioStatus").textContent="✅ 音声有効。再生できます。";
-    $("audioStatus").classList.add("ok");
-    $("enableAudio").textContent="✅ 音声有効";
-    $("enableAudio").disabled=true;
-
-    // 確認音
-    playSample(72,audioCtx.currentTime+.05,.45,.65);
-  }catch(e){
-    audioEnabled=false;
-    $("audioStatus").textContent="⚠️ 音声を有効にできません: "+e.message;
-    $("error").textContent=e.message;
-  }
-}
-
-function loadSelectedLibrarySong(){
-  const key=$("librarySongs").value;
-  if(!key){$("status").textContent="曲を選んでください";return}
+function loadLibrary(key){
+  log("曲選択: "+key);
+  if(!key){$("loadStatus").textContent="曲を選んでください。";return;}
   const s=SONGBOOK[key];
-  if(!s){$("error").textContent="曲データがありません。";return}
+  if(!s){$("loadStatus").textContent="曲データが見つかりません。";return;}
   $("songName").value=s.name;
   $("chords").value=s.chords;
   $("melody").value=s.melody;
   $("bpm").value=s.bpm;
   $("style").value=s.style;
-  $("feel").value=s.feel||"straight";
-  $("playChords").checked=true;
-  $("playMelody").checked=true;
-  $("loop").checked=false;
-  $("error").textContent="";
-  $("status").textContent="「"+s.name+"」を読み込みました";
+  $("feel").value=s.feel;
+  $("loadStatus").textContent="✅ 「"+s.name+"」を読み込みました。";
+  $("loadStatus").className="note ok";
+  $("status").textContent="曲を読み込みました";
+  log("曲読み込み成功: "+s.name);
 }
 
-function getSongs(){try{return JSON.parse(localStorage.getItem("chordPlayerSongs"))||{}}catch(e){return{}}}
-function saveSongs(s){localStorage.setItem("chordPlayerSongs",JSON.stringify(s))}
-function updateSongList(){
-  $("savedSongs").innerHTML='<option value="">保存した曲を選択</option>';
-  const songs=getSongs();
-  Object.keys(songs).sort().forEach(name=>{
-    const op=document.createElement("option");op.value=name;op.textContent=name;$("savedSongs").appendChild(op);
-  });
+let ctx=null,master=null,audioEnabled=false,samplesReady=false;
+const sampleBuffers=new Map();
+const activeSources=[];
+let timers=[],token=0,lastVoicing=null;
+
+const SAMPLE_BASE="https://tonejs.github.io/audio/salamander/";
+const SAMPLES=[{midi:48,file:"C3.mp3"},{midi:60,file:"C4.mp3"},{midi:72,file:"C5.mp3"}];
+
+function createContextSync(){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) throw new Error("Web Audio非対応");
+  if(!ctx){
+    ctx=new AC();
+    master=ctx.createGain();
+    master.gain.value=.75;
+    master.connect(ctx.destination);
+  }
+  return ctx;
 }
 
-$("enableAudio").addEventListener("click",enableAudio);
-$("loadLibrarySong").addEventListener("click",loadSelectedLibrarySong);
-$("librarySongs").addEventListener("change",loadSelectedLibrarySong);
-$("test").addEventListener("click",async()=>{
-  $("error").textContent="";
+async function enableAudioNow(){
   try{
-    if(!audioEnabled)throw new Error("先に「🔊 音を有効にする」を押してください。");
-    await ensureContext();if(!samplesReady)await loadSamples();
-    const t=audioCtx.currentTime+.05;
-    playSample(60,t,.8,.58);playSample(64,t+.02,.8,.55);playSample(67,t+.04,.8,.55);playSample(72,t+.9,.7,.72);
-    $("status").textContent="録音ピアノのテスト音を再生しました";
-  }catch(e){$("error").textContent=e.message}
-});
-$("play").addEventListener("click",startPlayback);
-$("stop").addEventListener("click",stopAll);
+    const c=createContextSync();
 
-$("saveSong").addEventListener("click",()=>{
-  const name=$("songName").value.trim();
-  if(!name){alert("曲名を入力してください。");return}
-  const songs=getSongs();
-  songs[name]={chords:$("chords").value,melody:$("melody").value,bpm:$("bpm").value,beats:$("beats").value,style:$("style").value,feel:$("feel").value};
-  saveSongs(songs);updateSongList();$("savedSongs").value=name;alert("保存しました。");
-});
-$("loadSong").addEventListener("click",()=>{
-  const name=$("savedSongs").value;if(!name)return;
-  const s=getSongs()[name];if(!s)return;
-  $("songName").value=name;$("chords").value=s.chords||"";$("melody").value=s.melody||"";$("bpm").value=s.bpm||84;$("beats").value=s.beats||4;$("style").value=s.style||"block";$("feel").value=s.feel||"straight";
-});
-$("deleteSong").addEventListener("click",()=>{
-  const name=$("savedSongs").value;if(!name)return;
-  if(!confirm(`「${name}」を削除しますか？`))return;
-  const songs=getSongs();delete songs[name];saveSongs(songs);updateSongList();
-});
+    // IMPORTANT: audible oscillator is created immediately inside the tap handler.
+    const osc=c.createOscillator();
+    const g=c.createGain();
+    osc.frequency.value=523.25;
+    g.gain.value=.20;
+    osc.connect(g);g.connect(master);
+    osc.start();
+    osc.stop(c.currentTime+.22);
 
-updateSongList();
+    if(c.state==="suspended"){
+      await c.resume();
+    }
+
+    audioEnabled=true;
+    $("audioStatus").textContent="✅ 電子音を開始しました。ピアノ音源を準備中…";
+    $("audioStatus").className="note ok";
+    log("AudioContext state: "+c.state);
+
+    await loadSamples();
+
+    $("audioStatus").textContent="✅ 音声有効・ピアノ音源準備完了";
+    $("enableAudio").textContent="✅ 音声有効";
+    log("ピアノ音源準備完了");
+  }catch(e){
+    $("audioStatus").textContent="⚠️ "+e.message;
+    $("error").textContent=e.stack||e.message;
+    log("音声エラー: "+e.message);
+  }
+}
+
+async function loadSamples(){
+  if(samplesReady)return;
+  for(const s of SAMPLES){
+    const r=await fetch(SAMPLE_BASE+s.file,{mode:"cors",cache:"force-cache"});
+    if(!r.ok)throw new Error("音源取得失敗 "+r.status);
+    const ab=await r.arrayBuffer();
+    const buf=await ctx.decodeAudioData(ab);
+    sampleBuffers.set(s.midi,buf);
+  }
+  samplesReady=true;
+}
+
+function nearestSample(midi){
+  return SAMPLES.reduce((best,s)=>Math.abs(s.midi-midi)<Math.abs(best.midi-midi)?s:best,SAMPLES[0]);
+}
+function playSample(midi,start,dur,vol){
+  const s=nearestSample(midi),buf=sampleBuffers.get(s.midi);
+  if(!buf)return;
+  const src=ctx.createBufferSource(),g=ctx.createGain();
+  src.buffer=buf;src.playbackRate.value=Math.pow(2,(midi-s.midi)/12);
+  const t=Math.max(ctx.currentTime,start);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.03,vol),t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+Math.max(.12,dur));
+  src.connect(g);g.connect(master);src.start(t);src.stop(t+dur+.08);
+  activeSources.push(src);
+}
+async function testPiano(){
+  try{
+    if(!audioEnabled)throw new Error("先に「音を有効にする」を押してください");
+    if(!samplesReady)await loadSamples();
+    playSample(60,ctx.currentTime+.03,.6,.6);
+    playSample(64,ctx.currentTime+.05,.6,.55);
+    playSample(67,ctx.currentTime+.07,.6,.55);
+    $("status").textContent="ピアノ音テスト";
+  }catch(e){$("error").textContent=e.message;}
+}
+
+function parseChord(s){
+  s=s.trim().replace(/♭/g,"b").replace(/♯/g,"#");
+  const m=s.match(/^([A-Ga-g])([#b]?)(.*)$/);if(!m)throw new Error("コードを読めません: "+s);
+  const root=(m[1].toUpperCase()+m[2]).toUpperCase();if(!(root in N))throw new Error("コードを読めません: "+s);
+  const suffix=m[3].trim().replace(/^M7$/,"maj7");
+  for(const [r,ints] of TYPES)if(r.test(suffix))return{symbol:s,root:N[root],ints};
+  throw new Error("未対応コード: "+s);
+}
+function parseChordSeq(text,defBeats){return text.replace(/\n/g," | ").split(/\s*\|\s*|\s+/).filter(Boolean).map(tok=>{let b=defBeats;const m=tok.match(/^(.*?):(\d*\.?\d+)$/);if(m){tok=m[1];b=Number(m[2])}return{...parseChord(tok),beats:b}})}
+function parseMelody(text){return text.replace(/\n/g," ").replace(/\|/g," ").split(/\s+/).filter(Boolean).map(tok=>{let b=1;const x=tok.match(/^(.*?):(\d*\.?\d+)$/);if(x){tok=x[1];b=Number(x[2])}if(/^R$/i.test(tok))return{symbol:"R",rest:true,beats:b};const m=tok.match(/^([A-Ga-g])([#b]?)(-?\d)$/);if(!m)throw new Error("音を読めません: "+tok);const name=(m[1].toUpperCase()+m[2]).toUpperCase();return{symbol:tok,rest:false,beats:b,midi:12*(Number(m[3])+1)+N[name]}})}
+function candidateVoicings(ch){const raw=ch.ints.map(i=>60+ch.root+i),out=[];for(let inv=0;inv<raw.length;inv++){let v=raw.slice();for(let i=0;i<inv;i++)v[i]+=12;v=v.sort((a,b)=>a-b);[-12,0,12].forEach(sh=>out.push(v.map(n=>n+sh)))}return out.filter(v=>Math.min(...v)>=45&&Math.max(...v)<=76)}
+function chooseVoicing(ch){const c=candidateVoicings(ch);if(!lastVoicing){lastVoicing=c[0].slice();return c[0]}const score=v=>v.reduce((s,n,i)=>s+Math.abs(n-(lastVoicing[i]??n)),0);const x=c.sort((a,b)=>score(a)-score(b))[0];lastVoicing=x.slice();return x}
+function scheduleChord(ch,start,dur,beatSec,style,feel){const notes=chooseVoicing(ch);if(style==="block"){notes.forEach((m,i)=>playSample(m,start+i*.01,dur*.85,.48));return;}let t=0,i=0;while(t<dur-.03){let step=style==="arp"?beatSec/2:beatSec;if(feel==="swing"&&style==="arp")step=(i%2===0)?beatSec*2/3:beatSec/3;if(style==="piano"){playSample(48+ch.root,start+t,Math.min(.7,step*.8),.45);notes.forEach((m,j)=>playSample(m,start+t+beatSec*.5+j*.01,Math.min(.32,beatSec*.3),.32));}else playSample(notes[i%notes.length],start+t,Math.min(.4,step*.8),.45);t+=step;i++;}}
+
+function stopAll(){
+  token++;timers.forEach(clearTimeout);timers=[];
+  activeSources.splice(0).forEach(s=>{try{s.stop()}catch(e){}});
+  $("nowChord").textContent="—";$("nowMelody").textContent="—";$("status").textContent="停止中";lastVoicing=null;
+}
+async function startPlayback(){
+  stopAll();$("error").textContent="";
+  const myToken=token;
+  try{
+    if(!audioEnabled)throw new Error("先に「音を有効にする」を押してください");
+    if(!samplesReady)await loadSamples();
+    const bpm=Number($("bpm").value),beatSec=60/bpm,start=ctx.currentTime+.08,style=$("style").value,feel=$("feel").value;
+    let maxSec=0;
+    if($("playChords").checked){let p=0;for(const ch of parseChordSeq($("chords").value,Number($("beats").value))){const d=ch.beats*beatSec;scheduleChord(ch,start+p,d,beatSec,style,feel);timers.push(setTimeout(()=>{if(token===myToken)$("nowChord").textContent=ch.symbol},p*1000));p+=d;}maxSec=Math.max(maxSec,p);}
+    if($("playMelody").checked){let p=0;for(const n of parseMelody($("melody").value)){const d=n.beats*beatSec;if(!n.rest)playSample(n.midi,start+p,d*.78,.62);timers.push(setTimeout(()=>{if(token===myToken)$("nowMelody").textContent=n.rest?"休符":n.symbol},p*1000));p+=d;}maxSec=Math.max(maxSec,p);}
+    $("status").textContent="再生中";
+    timers.push(setTimeout(()=>{if(token!==myToken)return;if($("loop").checked)startPlayback();else $("status").textContent="再生終了"},(maxSec+.2)*1000));
+  }catch(e){$("error").textContent=e.stack||e.message;log("再生エラー: "+e.message);}
+}
+
+window.addEventListener("error",e=>log("JS error: "+e.message));
+log("JavaScript初期化完了");
 </script>
 </body>
 </html>
