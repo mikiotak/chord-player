@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>コード＆メロディープレーヤー</title>
+<title>コード＆メロディープレーヤー v3.0</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f4f4f6;margin:0;color:#111}
 .wrap{max-width:760px;margin:auto;padding:18px 14px 40px}
@@ -21,8 +21,9 @@ button.secondary{background:#e9e9ed;color:#111}.checks{display:flex;gap:18px;fle
 </head>
 <body>
 <div class="wrap">
-<h1>🎼 コード＆メロディープレーヤー</h1>
-<div class="sub">曲集から選ぶことも、自分でコードとメロディーを入力することもできます。</div>
+<h1>🎹 コード＆メロディープレーヤー v3.0</h1>
+<div class="sub">録音ピアノ音源で、曲集や自作曲のコードとメロディーを演奏できます。</div>
+<div id="sampleStatus" class="note" style="margin-top:6px">🎹 ピアノ音源を読み込み中…</div>
 
 <div class="card">
 <label>🎼 曲集から選ぶ</label>
@@ -97,10 +98,23 @@ F4 A4 G4 F4 | E4 G4 F4:2</textarea>
 <div class="nowLabel">メロディー</div><div id="nowMelody">—</div>
 <div id="status">停止中</div>
 </div>
+<div class="card">
+<div class="note">
+音源：Salamander Grand Piano（Alexander Holm）/ CC BY 3.0。<br>
+演奏エンジン：Tone.js Sampler。
+</div>
 </div>
 
+</div>
+
+<script src="https://unpkg.com/tone@15.1.22/build/Tone.js"></script>
 <script>
-let ctx=null,master=null,timers=[],nodes=[],playing=false;
+let sampler=null;
+let samplerReady=false;
+let playing=false;
+let uiTimers=[];
+let lastVoicing=null;
+
 const N={"C":0,"C#":1,"DB":1,"D":2,"D#":3,"EB":3,"E":4,"F":5,"F#":6,"GB":6,"G":7,"G#":8,"AB":8,"A":9,"A#":10,"BB":10,"B":11};
 const TYPES=[[/^maj7$/i,[0,4,7,11]],[/^m7$/i,[0,3,7,10]],[/^7$/i,[0,4,7,10]],[/^m6$/i,[0,3,7,9]],[/^6$/i,[0,4,7,9]],[/^m$/i,[0,3,7]],[/^sus4$/i,[0,5,7]],[/^sus2$/i,[0,2,7]],[/^add9$/i,[0,4,7,14]],[/^dim$/i,[0,3,6]],[/^aug$/i,[0,4,8]],[/^$/,[0,4,7]]];
 
@@ -117,223 +131,325 @@ auld:{name:"蛍の光",bpm:82,style:"piano",chords:"C:4 | G7:4 | C:4 | F:4 | C:4
 greensleeves:{name:"グリーンスリーブス",bpm:88,style:"arp",chords:"Am:4 | G:4 | Am:4 | E7:4 | Am:4 | G:4 | F:4 | E7:4",melody:"A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G4:2 A4 | B4 E4:3 | A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G#4 A4:2 | A4:4"}
 };
 
-let lastVoicing=null;
 
-async function initAudio(){
-  const AC=window.AudioContext||window.webkitAudioContext;
-  if(!AC) throw new Error("このブラウザは音声再生に対応していません。");
-  if(!ctx){
-    ctx=new AC();
-    master=ctx.createGain();
-    master.gain.value=.48;
-    master.connect(ctx.destination);
-  }
-  if(ctx.state!=="running") await ctx.resume();
+
+const SAMPLE_URLS = {
+  "A0":"A0.mp3",
+  "C1":"C1.mp3",
+  "D#1":"Ds1.mp3",
+  "F#1":"Fs1.mp3",
+  "A1":"A1.mp3",
+  "C2":"C2.mp3",
+  "D#2":"Ds2.mp3",
+  "F#2":"Fs2.mp3",
+  "A2":"A2.mp3",
+  "C3":"C3.mp3",
+  "D#3":"Ds3.mp3",
+  "F#3":"Fs3.mp3",
+  "A3":"A3.mp3",
+  "C4":"C4.mp3",
+  "D#4":"Ds4.mp3",
+  "F#4":"Fs4.mp3",
+  "A4":"A4.mp3",
+  "C5":"C5.mp3",
+  "D#5":"Ds5.mp3",
+  "F#5":"Fs5.mp3",
+  "A5":"A5.mp3",
+  "C6":"C6.mp3",
+  "D#6":"Ds6.mp3",
+  "F#6":"Fs6.mp3",
+  "A6":"A6.mp3",
+  "C7":"C7.mp3",
+  "D#7":"Ds7.mp3",
+  "F#7":"Fs7.mp3",
+  "A7":"A7.mp3",
+  "C8":"C8.mp3"
+};
+
+function initSampler(){
+  const status=document.getElementById("sampleStatus");
+  status.textContent="🎹 ピアノ音源を読み込み中…";
+
+  sampler=new Tone.Sampler({
+    urls:SAMPLE_URLS,
+    release:1.1,
+    baseUrl:"https://tonejs.github.io/audio/salamander/",
+    onload:()=>{
+      samplerReady=true;
+      status.textContent="✅ 録音ピアノ音源の準備完了";
+    },
+    onerror:(err)=>{
+      samplerReady=false;
+      status.textContent="⚠️ ピアノ音源の読み込みに失敗しました。再読み込みしてください。";
+      console.error(err);
+    }
+  }).toDestination();
+
+  sampler.volume.value=-6;
 }
 
-function freq(m){return 440*Math.pow(2,(m-69)/12)}
-
-function pianoTone(midi,start,dur,volume=.16,brightness=1){
-  const f=freq(midi);
-  const g=ctx.createGain();
-  const filter=ctx.createBiquadFilter();
-
-  filter.type="lowpass";
-  filter.frequency.setValueAtTime(2200*brightness,start);
-  filter.frequency.exponentialRampToValueAtTime(900,start+Math.min(dur,.8));
-  filter.Q.value=.6;
-
-  g.gain.setValueAtTime(.0001,start);
-  g.gain.exponentialRampToValueAtTime(volume,start+.008);
-  g.gain.exponentialRampToValueAtTime(Math.max(.012,volume*.32),start+.16);
-  g.gain.exponentialRampToValueAtTime(.0001,start+Math.max(.12,dur));
-
-  filter.connect(g);
-  g.connect(master);
-
-  const partials=[
-    {ratio:1,amp:1,type:"triangle"},
-    {ratio:2,amp:.22,type:"sine"},
-    {ratio:3,amp:.08,type:"sine"}
-  ];
-
-  partials.forEach((p,i)=>{
-    const o=ctx.createOscillator();
-    const pg=ctx.createGain();
-    o.type=p.type;
-    o.frequency.value=f*p.ratio;
-    o.detune.value=i===0?0:(i===1?1.5:-1.2);
-    pg.gain.value=p.amp;
-    o.connect(pg);
-    pg.connect(filter);
-    o.start(start);
-    o.stop(start+dur+.06);
-    nodes.push(o);
-  });
+function midiToNote(midi){
+  const names=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  const pc=((midi%12)+12)%12;
+  const oct=Math.floor(midi/12)-1;
+  return names[pc]+oct;
 }
 
 function parseChord(s){
   s=s.trim().replace(/♭/g,"b").replace(/♯/g,"#");
   const m=s.match(/^([A-Ga-g])([#b]?)(.*)$/);
   if(!m) throw new Error("コードを読めません: "+s);
+
   const root=(m[1].toUpperCase()+m[2]).toUpperCase();
   if(!(root in N)) throw new Error("コードを読めません: "+s);
+
   let suffix=m[3].trim().replace(/^M7$/,"maj7");
+
   for(const [r,ints] of TYPES){
-    if(r.test(suffix)) return {symbol:s,root:N[root],ints};
+    if(r.test(suffix)){
+      return {symbol:s,root:N[root],ints};
+    }
   }
   throw new Error("未対応コード: "+s);
 }
 
 function parseChordSeq(text,defBeats){
-  return text.replace(/\n/g," | ").split(/\s*\|\s*|\s+/).filter(Boolean).map(token=>{
-    let beats=defBeats;
-    const x=token.match(/^(.*?):(\d*\.?\d+)$/);
-    if(x){token=x[1];beats=Number(x[2])}
-    return {...parseChord(token),beats};
-  });
+  return text
+    .replace(/\n/g," | ")
+    .split(/\s*\|\s*|\s+/)
+    .filter(Boolean)
+    .map(token=>{
+      let noteBeats=defBeats;
+      const x=token.match(/^(.*?):(\d*\.?\d+)$/);
+      if(x){
+        token=x[1];
+        noteBeats=Number(x[2]);
+      }
+      return {...parseChord(token),beats:noteBeats};
+    });
 }
 
 function parseMelodyNote(token){
-  let beats=1;
+  let noteBeats=1;
   const d=token.match(/^(.*?):(\d*\.?\d+)$/);
-  if(d){token=d[1];beats=Number(d[2])}
-  if(/^R$/i.test(token)) return {symbol:"R",rest:true,beats};
+
+  if(d){
+    token=d[1];
+    noteBeats=Number(d[2]);
+  }
+
+  if(/^R$/i.test(token)){
+    return {symbol:"R",rest:true,beats:noteBeats};
+  }
+
   token=token.replace(/♭/g,"b").replace(/♯/g,"#");
   const m=token.match(/^([A-Ga-g])([#b]?)(-?\d)$/);
+
   if(!m) throw new Error("メロディー音を読めません: "+token);
+
   const name=(m[1].toUpperCase()+m[2]).toUpperCase();
   if(!(name in N)) throw new Error("メロディー音を読めません: "+token);
-  return {symbol:token,rest:false,beats,midi:12*(Number(m[3])+1)+N[name]};
+
+  return {
+    symbol:token,
+    rest:false,
+    beats:noteBeats,
+    midi:12*(Number(m[3])+1)+N[name]
+  };
 }
 
 function parseMelody(text){
-  return text.replace(/\n/g," ").replace(/\|/g," ").split(/\s+/).filter(Boolean).map(parseMelodyNote);
+  return text
+    .replace(/\n/g," ")
+    .replace(/\|/g," ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(parseMelodyNote);
 }
 
 function candidateVoicings(ch){
   const raw=ch.ints.map(i=>60+ch.root+i);
   const out=[];
+
   for(let inv=0;inv<raw.length;inv++){
     let v=raw.slice();
     for(let i=0;i<inv;i++) v[i]+=12;
     v=v.sort((a,b)=>a-b);
-    [-12,0,12].forEach(shift=>out.push(v.map(n=>n+shift)));
+
+    [-12,0,12].forEach(shift=>{
+      out.push(v.map(n=>n+shift));
+    });
   }
+
   return out.filter(v=>Math.min(...v)>=45 && Math.max(...v)<=76);
 }
 
 function chooseVoicing(ch){
   const candidates=candidateVoicings(ch);
+
   if(!lastVoicing){
-    const target=60;
     const chosen=candidates.sort((a,b)=>{
       const ca=a.reduce((x,y)=>x+y,0)/a.length;
       const cb=b.reduce((x,y)=>x+y,0)/b.length;
-      return Math.abs(ca-target)-Math.abs(cb-target);
+      return Math.abs(ca-60)-Math.abs(cb-60);
     })[0];
+
     lastVoicing=chosen.slice();
     return chosen;
   }
 
   const score=v=>{
-    let s=0;
     const a=v.slice().sort((x,y)=>x-y);
     const b=lastVoicing.slice().sort((x,y)=>x-y);
     const len=Math.min(a.length,b.length);
+    let s=0;
     for(let i=0;i<len;i++) s+=Math.abs(a[i]-b[i]);
     s+=Math.abs(a.length-b.length)*3;
     return s;
   };
+
   const chosen=candidates.sort((a,b)=>score(a)-score(b))[0];
   lastVoicing=chosen.slice();
   return chosen;
 }
 
-function beatAccent(beatPos){
+function beatVelocity(beatPos,base){
   const p=((beatPos%4)+4)%4;
-  if(p<.05) return 1.18;
-  if(Math.abs(p-2)<.05) return 1.08;
-  return .92;
+  if(p<.05) return Math.min(1,base*1.14);
+  if(Math.abs(p-2)<.05) return Math.min(1,base*1.05);
+  return base*.90;
 }
 
-function blockChord(ch,start,dur,beatPos){
-  const notes=chooseVoicing(ch);
-  const acc=beatAccent(beatPos);
-  notes.forEach((m,i)=>pianoTone(m,start+i*.012,dur*.90,.12*acc,1.05));
+function scheduleSample(midi,startSec,durSec,velocity=.7){
+  const id=Tone.getTransport().scheduleOnce(time=>{
+    sampler.triggerAttackRelease(
+      midiToNote(midi),
+      Math.max(.06,durSec),
+      time,
+      Math.max(.08,Math.min(1,velocity))
+    );
+  }, startSec);
+  return id;
 }
 
-function arpeggioChord(ch,start,dur,beatSec,feel,beatPos){
+function scheduleBlockChord(ch,startSec,durSec,beatPos){
   const notes=chooseVoicing(ch);
-  const stepBase=beatSec/2;
-  let t=0,idx=0;
-  while(t<dur-.04){
-    let step=stepBase;
-    if(feel==="swing"){
+  const vel=beatVelocity(beatPos,.62);
+
+  notes.forEach((m,i)=>{
+    scheduleSample(m,startSec+i*.012,durSec*.88,vel*(i===0?.95:1));
+  });
+}
+
+function scheduleArpeggio(ch,startSec,durSec,beatSec,feelVal,beatPos){
+  const notes=chooseVoicing(ch);
+  let t=0;
+  let idx=0;
+
+  while(t<durSec-.03){
+    let step=beatSec/2;
+
+    if(feelVal==="swing"){
       step=(idx%2===0)?beatSec*(2/3):beatSec*(1/3);
     }
-    const midi=notes[idx%notes.length];
-    const accent=beatAccent(beatPos+t/beatSec);
-    pianoTone(midi,start+t,Math.min(step*.88,.48),.16*accent,1.1);
+
+    const vel=beatVelocity(beatPos+t/beatSec,.69);
+    scheduleSample(
+      notes[idx%notes.length],
+      startSec+t,
+      Math.min(step*.82,.52),
+      vel
+    );
+
     t+=step;
     idx++;
   }
 }
 
-function pianoChord(ch,start,dur,beatSec,feel,beatPos){
+function schedulePianoChord(ch,startSec,durSec,beatSec,feelVal,beatPos){
   const notes=chooseVoicing(ch);
   const bass=48+ch.root;
-  let beat=0;
-  while(beat*beatSec<dur-.04){
-    const t=beat*beatSec;
-    const accent=beatAccent(beatPos+beat);
-    pianoTone(bass-(beat%4===2?0:12),start+t,Math.min(beatSec*.85,1.0),.17*accent,.82);
+  let beatIndex=0;
 
-    if(feel==="swing"){
-      const first=start+t+beatSec*(2/3);
-      notes.forEach((m,i)=>pianoTone(m,first+i*.01,Math.min(beatSec*.28,.30),.075*accent,1.0));
-    }else{
-      const first=start+t+beatSec*.5;
-      notes.forEach((m,i)=>pianoTone(m,first+i*.01,Math.min(beatSec*.35,.34),.078*accent,1.0));
-    }
-    beat++;
+  while(beatIndex*beatSec<durSec-.03){
+    const t=beatIndex*beatSec;
+    const vel=beatVelocity(beatPos+beatIndex,.63);
+
+    scheduleSample(
+      bass-(beatIndex%4===0?12:0),
+      startSec+t,
+      Math.min(beatSec*.82,1.1),
+      vel*.95
+    );
+
+    const chordOffset=feelVal==="swing" ? beatSec*(2/3) : beatSec*.5;
+
+    notes.forEach((m,i)=>{
+      scheduleSample(
+        m,
+        startSec+t+chordOffset+i*.01,
+        Math.min(beatSec*.34,.42),
+        vel*.72
+      );
+    });
+
+    beatIndex++;
   }
 }
 
-function scheduleChord(ch,start,dur,style,beatSec,feel,beatPos){
-  if(style==="arp") arpeggioChord(ch,start,dur,beatSec,feel,beatPos);
-  else if(style==="piano") pianoChord(ch,start,dur,beatSec,feel,beatPos);
-  else blockChord(ch,start,dur,beatPos);
+function scheduleChord(ch,startSec,durSec,styleVal,beatSec,feelVal,beatPos){
+  if(styleVal==="arp"){
+    scheduleArpeggio(ch,startSec,durSec,beatSec,feelVal,beatPos);
+  }else if(styleVal==="piano"){
+    schedulePianoChord(ch,startSec,durSec,beatSec,feelVal,beatPos);
+  }else{
+    scheduleBlockChord(ch,startSec,durSec,beatPos);
+  }
 }
 
-function melodyTone(note,start,dur,beatPos){
+function scheduleMelody(note,startSec,durSec,beatPos){
   if(note.rest) return;
-  const accent=beatAccent(beatPos);
-  pianoTone(note.midi,start,dur*.78,.19*accent,1.15);
+  scheduleSample(
+    note.midi,
+    startSec,
+    durSec*.80,
+    beatVelocity(beatPos,.80)
+  );
 }
 
-function clearPlayback(){
-  timers.forEach(clearTimeout);
-  timers=[];
-  nodes.forEach(n=>{try{n.stop()}catch(e){}});
-  nodes=[];
+function clearUiTimers(){
+  uiTimers.forEach(clearTimeout);
+  uiTimers=[];
 }
 
 function stopAll(){
   playing=false;
-  if(master && ctx){
-    try{
-      master.gain.cancelScheduledValues(ctx.currentTime);
-      master.gain.setValueAtTime(.0001,ctx.currentTime);
-    }catch(e){}
-  }
-  clearPlayback();
+  clearUiTimers();
+
+  try{
+    const transport=Tone.getTransport();
+    transport.stop();
+    transport.cancel(0);
+  }catch(e){}
+
+  try{
+    if(sampler) sampler.releaseAll(Tone.now());
+  }catch(e){}
+
   document.getElementById("nowChord").textContent="—";
   document.getElementById("nowMelody").textContent="—";
   document.getElementById("status").textContent="停止中";
   lastVoicing=null;
-  if(master && ctx){
-    try{master.gain.setValueAtTime(.48,ctx.currentTime+.05)}catch(e){}
+}
+
+async function ensureAudio(){
+  await Tone.start();
+
+  if(!samplerReady){
+    document.getElementById("status").textContent="ピアノ音源を読み込み中です…";
+    await Tone.loaded();
+    samplerReady=true;
+    document.getElementById("sampleStatus").textContent="✅ 録音ピアノ音源の準備完了";
   }
 }
 
@@ -342,113 +458,262 @@ async function startPlayback(){
   document.getElementById("error").textContent="";
 
   try{
-    await initAudio();
+    await ensureAudio();
 
-    const bpm=Number(document.getElementById("bpm").value);
+    const bpmValue=Number(document.getElementById("bpm").value);
     const defBeats=Number(document.getElementById("beats").value);
     const styleVal=document.getElementById("style").value;
     const feelVal=document.getElementById("feel").value;
     const useChords=document.getElementById("playChords").checked;
     const useMelody=document.getElementById("playMelody").checked;
 
-    if(!useChords&&!useMelody) throw new Error("伴奏またはメロディーを選択してください。");
+    if(!useChords&&!useMelody){
+      throw new Error("伴奏またはメロディーを選択してください。");
+    }
 
-    const beatSec=60/bpm;
-    const startTime=ctx.currentTime+.10;
-    let chordSeconds=0,melodySeconds=0;
+    const transport=Tone.getTransport();
+    transport.stop();
+    transport.cancel(0);
+    transport.seconds=0;
+
+    const beatSec=60/bpmValue;
+    let chordSeconds=0;
+    let melodySeconds=0;
     lastVoicing=null;
 
     if(useChords){
-      let posSec=0,beatPos=0;
-      parseChordSeq(document.getElementById("chords").value,defBeats).forEach(ch=>{
-        const dur=ch.beats*beatSec;
-        scheduleChord(ch,startTime+posSec,dur,styleVal,beatSec,feelVal,beatPos);
+      let posSec=0;
+      let beatPos=0;
 
-        timers.push(setTimeout(()=>{
-          if(playing) document.getElementById("nowChord").textContent=ch.symbol;
-        },100+posSec*1000));
+      parseChordSeq(
+        document.getElementById("chords").value,
+        defBeats
+      ).forEach(ch=>{
+        const dur=ch.beats*beatSec;
+
+        scheduleChord(
+          ch,posSec,dur,styleVal,beatSec,feelVal,beatPos
+        );
+
+        uiTimers.push(setTimeout(()=>{
+          if(playing){
+            document.getElementById("nowChord").textContent=ch.symbol;
+          }
+        },posSec*1000));
 
         posSec+=dur;
         beatPos+=ch.beats;
       });
+
       chordSeconds=posSec;
     }
 
     if(useMelody){
-      let posSec=0,beatPos=0;
-      const melodyNotes=parseMelody(document.getElementById("melody").value);
+      let posSec=0;
+      let beatPos=0;
 
-      melodyNotes.forEach((n,idx)=>{
+      parseMelody(
+        document.getElementById("melody").value
+      ).forEach(note=>{
         let startOffset=posSec;
-        let noteDur=n.beats*beatSec;
+        let dur=note.beats*beatSec;
 
-        if(feelVal==="swing" && Math.abs(n.beats-.5)<.001){
-          const isOffbeat=(Math.round(beatPos*2)%2)===1;
-          if(isOffbeat) startOffset+=beatSec/6;
-          noteDur*=.82;
+        if(feelVal==="swing" && Math.abs(note.beats-.5)<.001){
+          const offbeat=(Math.round(beatPos*2)%2)===1;
+          if(offbeat) startOffset+=beatSec/6;
+          dur*=.82;
         }
 
-        melodyTone(n,startTime+startOffset,noteDur,beatPos);
+        scheduleMelody(note,startOffset,dur,beatPos);
 
-        timers.push(setTimeout(()=>{
-          if(playing) document.getElementById("nowMelody").textContent=n.rest?"休符":n.symbol;
-        },100+startOffset*1000));
+        uiTimers.push(setTimeout(()=>{
+          if(playing){
+            document.getElementById("nowMelody").textContent=
+              note.rest ? "休符" : note.symbol;
+          }
+        },startOffset*1000));
 
-        posSec+=n.beats*beatSec;
-        beatPos+=n.beats;
+        posSec+=note.beats*beatSec;
+        beatPos+=note.beats;
       });
+
       melodySeconds=posSec;
     }
 
+    const totalSeconds=Math.max(chordSeconds,melodySeconds);
+
     playing=true;
     document.getElementById("status").textContent=
-      feelVal==="swing" ? "再生中（スウィング）" : "再生中";
+      feelVal==="swing"
+      ? "再生中（録音ピアノ／スウィング）"
+      : "再生中（録音ピアノ）";
 
-    timers.push(setTimeout(()=>{
+    transport.start("+0.08");
+
+    uiTimers.push(setTimeout(()=>{
       if(!playing) return;
+
       if(document.getElementById("loop").checked){
         startPlayback();
       }else{
         playing=false;
+        try{
+          transport.stop();
+          transport.cancel(0);
+        }catch(e){}
         document.getElementById("nowChord").textContent="—";
         document.getElementById("nowMelody").textContent="—";
         document.getElementById("status").textContent="再生終了";
         lastVoicing=null;
       }
-    },100+Math.max(chordSeconds,melodySeconds)*1000));
+    },(totalSeconds+.10)*1000));
 
   }catch(e){
     document.getElementById("error").textContent=e.message;
+    document.getElementById("status").textContent="再生できませんでした";
   }
 }
 
 document.getElementById("test").onclick=async()=>{
-document.getElementById("error").textContent="";
-try{
-await initAudio();
-const t=ctx.currentTime+.03;
-pianoTone(60,t,.8,.15,1.1); pianoTone(64,t+.02,.8,.14,1.1); pianoTone(67,t+.04,.8,.14,1.1); pianoTone(72,t+.85,.8,.20,1.15);
-document.getElementById("status").textContent="テスト音を再生しました";
-}catch(e){
-document.getElementById("error").textContent=e.message;
-}
+  document.getElementById("error").textContent="";
+
+  try{
+    await ensureAudio();
+
+    sampler.triggerAttackRelease(
+      ["C4","E4","G4"],
+      .9,
+      Tone.now()+.03,
+      .72
+    );
+
+    sampler.triggerAttackRelease(
+      "C5",
+      .7,
+      Tone.now()+1.0,
+      .82
+    );
+
+    document.getElementById("status").textContent=
+      "録音ピアノのテスト音を再生しました";
+  }catch(e){
+    document.getElementById("error").textContent=e.message;
+  }
 };
 
 document.getElementById("play").onclick=startPlayback;
 document.getElementById("stop").onclick=stopAll;
 
-loadLibrarySong.onclick=()=>{
-const key=librarySongs.value;if(!key){alert("曲を選んでください。");return}
-const s=SONGBOOK[key];songName.value=s.name;chords.value=s.chords;melody.value=s.melody;bpm.value=s.bpm;style.value=s.style;playChords.checked=true;playMelody.checked=true;loop.checked=false;status.textContent=s.name+" を読み込みました";
+document.getElementById("loadLibrarySong").onclick=()=>{
+  const key=document.getElementById("librarySongs").value;
+
+  if(!key){
+    alert("曲を選んでください。");
+    return;
+  }
+
+  const song=SONGBOOK[key];
+
+  document.getElementById("songName").value=song.name;
+  document.getElementById("chords").value=song.chords;
+  document.getElementById("melody").value=song.melody;
+  document.getElementById("bpm").value=song.bpm;
+  document.getElementById("style").value=song.style;
+  document.getElementById("feel").value=
+    key==="saints" ? "swing" : "straight";
+  document.getElementById("playChords").checked=true;
+  document.getElementById("playMelody").checked=true;
+  document.getElementById("loop").checked=false;
+  document.getElementById("status").textContent=
+    song.name+" を読み込みました";
 };
 
-function getSongs(){try{return JSON.parse(localStorage.getItem("chordPlayerSongs"))||{}}catch{return{}}}
-function saveSongs(s){localStorage.setItem("chordPlayerSongs",JSON.stringify(s))}
-function updateSongList(){savedSongs.innerHTML='<option value="">保存した曲を選択</option>';const s=getSongs();Object.keys(s).sort().forEach(name=>{const op=document.createElement("option");op.value=name;op.textContent=name;savedSongs.appendChild(op)})}
-saveSong.onclick=()=>{const name=songName.value.trim();if(!name){alert("曲名を入力してください。");return}const s=getSongs();s[name]={chords:chords.value,melody:melody.value,bpm:bpm.value,beats:beats.value,style:style.value};saveSongs(s);updateSongList();savedSongs.value=name;alert("保存しました。")};
-loadSong.onclick=()=>{const name=savedSongs.value;if(!name)return;const s=getSongs()[name];if(!s)return;songName.value=name;chords.value=s.chords||"";melody.value=s.melody||"";bpm.value=s.bpm||84;beats.value=s.beats||4;style.value=s.style||"block"};
-deleteSong.onclick=()=>{const name=savedSongs.value;if(!name)return;if(!confirm(`「${name}」を削除しますか？`))return;const s=getSongs();delete s[name];saveSongs(s);updateSongList()};
+function getSongs(){
+  try{
+    return JSON.parse(localStorage.getItem("chordPlayerSongs"))||{};
+  }catch{
+    return {};
+  }
+}
+
+function saveSongs(songs){
+  localStorage.setItem(
+    "chordPlayerSongs",
+    JSON.stringify(songs)
+  );
+}
+
+function updateSongList(){
+  const select=document.getElementById("savedSongs");
+  select.innerHTML='<option value="">保存した曲を選択</option>';
+
+  const songs=getSongs();
+
+  Object.keys(songs).sort().forEach(name=>{
+    const op=document.createElement("option");
+    op.value=name;
+    op.textContent=name;
+    select.appendChild(op);
+  });
+}
+
+document.getElementById("saveSong").onclick=()=>{
+  const name=document.getElementById("songName").value.trim();
+
+  if(!name){
+    alert("曲名を入力してください。");
+    return;
+  }
+
+  const songs=getSongs();
+
+  songs[name]={
+    chords:document.getElementById("chords").value,
+    melody:document.getElementById("melody").value,
+    bpm:document.getElementById("bpm").value,
+    beats:document.getElementById("beats").value,
+    style:document.getElementById("style").value,
+    feel:document.getElementById("feel").value
+  };
+
+  saveSongs(songs);
+  updateSongList();
+  document.getElementById("savedSongs").value=name;
+  alert("保存しました。");
+};
+
+document.getElementById("loadSong").onclick=()=>{
+  const name=document.getElementById("savedSongs").value;
+  if(!name) return;
+
+  const song=getSongs()[name];
+  if(!song) return;
+
+  document.getElementById("songName").value=name;
+  document.getElementById("chords").value=song.chords||"";
+  document.getElementById("melody").value=song.melody||"";
+  document.getElementById("bpm").value=song.bpm||84;
+  document.getElementById("beats").value=song.beats||4;
+  document.getElementById("style").value=song.style||"block";
+  document.getElementById("feel").value=song.feel||"straight";
+};
+
+document.getElementById("deleteSong").onclick=()=>{
+  const name=document.getElementById("savedSongs").value;
+  if(!name) return;
+
+  if(!confirm(`「${name}」を削除しますか？`)) return;
+
+  const songs=getSongs();
+  delete songs[name];
+  saveSongs(songs);
+  updateSongList();
+};
+
+initSampler();
 updateSongList();
 </script>
 </body>
 </html>
+index_v3_piano.html
+HTML
