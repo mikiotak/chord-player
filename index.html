@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>コード＆メロディープレーヤー v3.4</title>
+<title>コード＆メロディープレーヤー v3.5</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f4f4f6;margin:0;color:#111}
 .wrap{max-width:760px;margin:auto;padding:18px 14px 40px}
@@ -18,23 +18,25 @@ button.secondary{background:#e9e9ed;color:#111}
 .checks{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}.check{display:flex;align-items:center;gap:7px;font-weight:600}.check input{width:auto;transform:scale(1.25)}
 #nowChord,#nowMelody{text-align:center;font-size:30px;font-weight:800;padding:5px}.nowLabel{text-align:center;font-size:12px;color:#777;margin-top:8px}
 #status{text-align:center;color:#666;font-size:14px;margin-top:8px}.error{color:#b00020;font-size:13px;margin-top:8px;white-space:pre-wrap}
-#debug{font-size:12px;white-space:pre-wrap;background:#f6f6f8;padding:10px;border-radius:10px;color:#444}
 .ok{color:#176b3a}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h1>🎹 コード＆メロディープレーヤー v3.4</h1>
-<div class="sub">iPhone動作確認を優先した診断版です。</div>
+<h1>🎹 コード＆メロディープレーヤー v3.5</h1>
+<div class="sub">スマホでも使える正式版です。iPhoneで音が出ない場合は消音モードを解除してください。</div>
 
 <div class="card">
-<label>① まず音声テスト</label>
+<label>📱 スマホで使う場合</label>
+<div class="note" style="margin-bottom:10px">
+iPhoneで音が出ない場合は、端末の<strong>消音モードを解除</strong>してください。
+</div>
 <button id="enableAudio" onclick="enableAudioNow()">🔊 音を有効にする</button>
-<div id="audioStatus" class="note" style="margin-top:8px">押した瞬間に短い「ピー」という確認音が鳴ります。</div>
+<div id="audioStatus" class="note" style="margin-top:8px">最初に1回だけ押してください。</div>
 </div>
 
 <div class="card">
-<label>② 曲集から選ぶ</label>
+<label>🎼 曲集から選ぶ</label>
 <select id="librarySongs" onchange="loadLibrary(this.value)">
 <option value="">曲を選んでください</option>
 <option value="saints">聖者の行進</option>
@@ -49,7 +51,7 @@ button.secondary{background:#e9e9ed;color:#111}
 <option value="greensleeves">グリーンスリーブス</option>
 </select>
 <button onclick="loadLibrary(document.getElementById('librarySongs').value)">🎵 この曲を読み込む</button>
-<div id="loadStatus" class="note" style="margin-top:8px">曲を選ぶとここに読み込み結果を表示します。</div>
+<div id="loadStatus" class="note" style="margin-top:8px">曲を選ぶとコードとメロディーを読み込みます。</div>
 </div>
 
 <div class="card"><label>曲名</label><input id="songName"></div>
@@ -81,16 +83,12 @@ button.secondary{background:#e9e9ed;color:#111}
 <div id="status">停止中</div>
 </div>
 
-<div class="card">
-<label>診断表示</label>
-<div id="debug">ページを読み込みました。</div>
-</div>
 </div>
 
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-function log(s){$("debug").textContent += "\n"+s;}
+function log(s){}
 
 const N={"C":0,"C#":1,"DB":1,"D":2,"D#":3,"EB":3,"E":4,"F":5,"F#":6,"GB":6,"G":7,"G#":8,"AB":8,"A":9,"A#":10,"BB":10,"B":11};
 const TYPES=[[/^maj7$/i,[0,4,7,11]],[/^m7$/i,[0,3,7,10]],[/^7$/i,[0,4,7,10]],[/^m6$/i,[0,3,7,9]],[/^6$/i,[0,4,7,9]],[/^m$/i,[0,3,7]],[/^sus4$/i,[0,5,7]],[/^sus2$/i,[0,2,7]],[/^add9$/i,[0,4,7,14]],[/^dim$/i,[0,3,6]],[/^aug$/i,[0,4,8]],[/^$/,[0,4,7]]];
@@ -163,17 +161,17 @@ async function enableAudioNow(){
     }
 
     audioEnabled=true;
-    $("audioStatus").textContent="✅ 電子音を開始しました。ピアノ音源を準備中…";
+    $("audioStatus").textContent="🎹 ピアノ音源を準備中…";
     $("audioStatus").className="note ok";
     log("AudioContext state: "+c.state);
 
     await loadSamples();
 
-    $("audioStatus").textContent="✅ 音声有効・ピアノ音源準備完了";
+    $("audioStatus").textContent="✅ 音声有効。再生できます。";
     $("enableAudio").textContent="✅ 音声有効";
     log("ピアノ音源準備完了");
   }catch(e){
-    $("audioStatus").textContent="⚠️ "+e.message;
+    $("audioStatus").textContent="⚠️ 音声を有効にできません。iPhoneの消音モードと音量を確認してください。";
     $("error").textContent=e.stack||e.message;
     log("音声エラー: "+e.message);
   }
@@ -249,8 +247,7 @@ async function startPlayback(){
   }catch(e){$("error").textContent=e.stack||e.message;log("再生エラー: "+e.message);}
 }
 
-window.addEventListener("error",e=>log("JS error: "+e.message));
-log("JavaScript初期化完了");
+
 </script>
 </body>
 </html>
