@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>コード＆メロディープレーヤー v3.5</title>
+<title>コード＆メロディープレーヤー v4.0</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f4f4f6;margin:0;color:#111}
 .wrap{max-width:760px;margin:auto;padding:18px 14px 40px}
@@ -23,7 +23,7 @@ button.secondary{background:#e9e9ed;color:#111}
 </head>
 <body>
 <div class="wrap">
-<h1>🎹 コード＆メロディープレーヤー v3.5</h1>
+<h1>🎹 コード＆メロディープレーヤー v4.0</h1>
 <div class="sub">スマホでも使える正式版です。iPhoneで音が出ない場合は消音モードを解除してください。</div>
 
 <div class="card">
@@ -64,7 +64,17 @@ iPhoneで音が出ない場合は、端末の<strong>消音モードを解除</s
 <div><label>コード標準拍数</label><select id="beats"><option value="1">1拍</option><option value="2">2拍</option><option value="4" selected>4拍</option><option value="8">8拍</option></select></div>
 </div>
 <label style="margin-top:14px">伴奏スタイル</label>
-<select id="style"><option value="block">🎵 ジャーン</option><option value="arp">🎶 アルペジオ</option><option value="piano">🎹 ピアノ伴奏風</option></select>
+<select id="style">
+<option value="block">🎵 ブロックコード</option>
+<option value="arp">🎶 アルペジオ</option>
+<option value="piano">🎹 ピアノ伴奏風</option>
+<option value="pop">🥁 ポップス</option>
+<option value="ballad">🌙 バラード</option>
+<option value="jazz">🎷 ジャズ</option>
+<option value="bossa">🌴 ボサノバ</option>
+<option value="waltz">💃 ワルツ</option>
+</select>
+<div class="note" style="margin-top:7px">同じ曲を伴奏スタイルを変えて聴き比べできます。</div>
 <label style="margin-top:14px">演奏フィール</label>
 <select id="feel"><option value="straight">ストレート</option><option value="swing">スウィング</option></select>
 <div class="checks">
@@ -94,16 +104,16 @@ const N={"C":0,"C#":1,"DB":1,"D":2,"D#":3,"EB":3,"E":4,"F":5,"F#":6,"GB":6,"G":7
 const TYPES=[[/^maj7$/i,[0,4,7,11]],[/^m7$/i,[0,3,7,10]],[/^7$/i,[0,4,7,10]],[/^m6$/i,[0,3,7,9]],[/^6$/i,[0,4,7,9]],[/^m$/i,[0,3,7]],[/^sus4$/i,[0,5,7]],[/^sus2$/i,[0,2,7]],[/^add9$/i,[0,4,7,14]],[/^dim$/i,[0,3,6]],[/^aug$/i,[0,4,8]],[/^$/,[0,4,7]]];
 
 const SONGBOOK={
-saints:{name:"聖者の行進",bpm:116,style:"piano",feel:"swing",chords:"C:4 | C:4 | C:4 | C:4 | F:4 | C:4 | G7:4 | C:4",melody:"C4 E4 F4 G4 | C4 E4 F4 G4 | C4 E4 F4 G4 | E4 C4 E4 D4 | E4 E4 D4 C4 | C4 E4 G4 G4 | F4 E4 D4 G4 | E4 D4 C4:2 R:2"},
-twinkle:{name:"きらきら星",bpm:100,style:"block",feel:"straight",chords:"C:8 | F:8 | G7:8 | C:8",melody:"C4 C4 G4 G4 A4 A4 G4:2 | F4 F4 E4 E4 D4 D4 C4:2 | G4 G4 F4 F4 E4 E4 D4:2 | G4 G4 F4 F4 E4 E4 D4:2"},
-ode:{name:"喜びの歌",bpm:110,style:"piano",feel:"straight",chords:"C:4 | G7:4 | C:4 | G7:4 | C:4 | F:4 | G7:4 | C:4",melody:"E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4:2 D4 D4 | E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | D4:2 C4:2"},
-mary:{name:"メリーさんのひつじ",bpm:105,style:"block",feel:"straight",chords:"C:4 | G7:4 | C:4 | G7:4 | C:4 | C:4",melody:"E4 D4 C4 D4 | E4 E4 E4:2 | D4 D4 D4:2 | E4 G4 G4:2 | E4 D4 C4 D4 | E4 E4 E4 E4"},
-frere:{name:"フレール・ジャック",bpm:105,style:"arp",feel:"straight",chords:"C:4 | C:4 | C:4 | C:4 | C:4 | G7:4 | C:4 | C:4",melody:"C4 D4 E4 C4 | C4 D4 E4 C4 | E4 F4 G4:2 | E4 F4 G4:2 | G4 A4 G4 F4 | E4 C4 G4:2 | C4 G3 C4:2 | C4:4"},
+saints:{name:"聖者の行進",bpm:116,style:"jazz",feel:"swing",chords:"C:4 | C:4 | C:4 | C:4 | F:4 | C:4 | G7:4 | C:4",melody:"C4 E4 F4 G4 | C4 E4 F4 G4 | C4 E4 F4 G4 | E4 C4 E4 D4 | E4 E4 D4 C4 | C4 E4 G4 G4 | F4 E4 D4 G4 | E4 D4 C4:2 R:2"},
+twinkle:{name:"きらきら星",bpm:100,style:"ballad",feel:"straight",chords:"C:8 | F:8 | G7:8 | C:8",melody:"C4 C4 G4 G4 A4 A4 G4:2 | F4 F4 E4 E4 D4 D4 C4:2 | G4 G4 F4 F4 E4 E4 D4:2 | G4 G4 F4 F4 E4 E4 D4:2"},
+ode:{name:"喜びの歌",bpm:110,style:"pop",feel:"straight",chords:"C:4 | G7:4 | C:4 | G7:4 | C:4 | F:4 | G7:4 | C:4",melody:"E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4:2 D4 D4 | E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | D4:2 C4:2"},
+mary:{name:"メリーさんのひつじ",bpm:105,style:"pop",feel:"straight",chords:"C:4 | G7:4 | C:4 | G7:4 | C:4 | C:4",melody:"E4 D4 C4 D4 | E4 E4 E4:2 | D4 D4 D4:2 | E4 G4 G4:2 | E4 D4 C4 D4 | E4 E4 E4 E4"},
+frere:{name:"フレール・ジャック",bpm:105,style:"waltz",feel:"straight",chords:"C:4 | C:4 | C:4 | C:4 | C:4 | G7:4 | C:4 | C:4",melody:"C4 D4 E4 C4 | C4 D4 E4 C4 | E4 F4 G4:2 | E4 F4 G4:2 | G4 A4 G4 F4 | E4 C4 G4:2 | C4 G3 C4:2 | C4:4"},
 london:{name:"ロンドン橋",bpm:110,style:"block",feel:"straight",chords:"C:4 | G7:4 | C:4 | G7:4 | C:4 | G7:4 | C:4 | C:4",melody:"G4 A4 G4 F4 | E4 F4 G4:2 | D4 E4 F4:2 | E4 F4 G4:2 | G4 A4 G4 F4 | E4 F4 G4:2 | D4 G4 E4 C4 | C4:4"},
-row:{name:"Row, Row, Row Your Boat",bpm:100,style:"arp",feel:"straight",chords:"C:4 | C:4 | C:4 | G7:4 | C:4 | G7:4 | C:4 | C:4",melody:"C4:1.5 C4:1.5 C4:1 | D4 E4:2 | E4 D4 E4 F4 | G4:4 | C5 C5 C5 G4 | G4 G4 E4 E4 | C4 G4 F4 E4 | D4 C4:3"},
-amazing:{name:"アメイジング・グレイス",bpm:72,style:"piano",feel:"straight",chords:"C:4 | F:4 | C:4 | G7:4 | C:4 | F:4 | C:4 | G7:4",melody:"G4 C5:2 E5 | C5:2 E5 D5 | C5:2 A4 G4 | G4:2 C5:2 | E5:2 C5 E5 | D5:2 G4:2 | C5:2 A4 G4 | C5:4"},
+row:{name:"Row, Row, Row Your Boat",bpm:100,style:"bossa",feel:"straight",chords:"C:4 | C:4 | C:4 | G7:4 | C:4 | G7:4 | C:4 | C:4",melody:"C4:1.5 C4:1.5 C4:1 | D4 E4:2 | E4 D4 E4 F4 | G4:4 | C5 C5 C5 G4 | G4 G4 E4 E4 | C4 G4 F4 E4 | D4 C4:3"},
+amazing:{name:"アメイジング・グレイス",bpm:72,style:"ballad",feel:"straight",chords:"C:4 | F:4 | C:4 | G7:4 | C:4 | F:4 | C:4 | G7:4",melody:"G4 C5:2 E5 | C5:2 E5 D5 | C5:2 A4 G4 | G4:2 C5:2 | E5:2 C5 E5 | D5:2 G4:2 | C5:2 A4 G4 | C5:4"},
 auld:{name:"蛍の光",bpm:82,style:"piano",feel:"straight",chords:"C:4 | G7:4 | C:4 | F:4 | C:4 | G7:4 | C:4 | C:4",melody:"G4 C5:1.5 C5:.5 C5 | E5 D5:1.5 C5:.5 D5 | E5 C5 C5 E5 | G5:2 A5 G5 | E5 E5 C5 D5 | E5 D5 C5 A4 | G4 C5 E5 D5 | C5:4"},
-greensleeves:{name:"グリーンスリーブス",bpm:88,style:"arp",feel:"straight",chords:"Am:4 | G:4 | Am:4 | E7:4 | Am:4 | G:4 | F:4 | E7:4",melody:"A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G4:2 A4 | B4 E4:3 | A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G#4 A4:2 | A4:4"}
+greensleeves:{name:"グリーンスリーブス",bpm:88,style:"waltz",feel:"straight",chords:"Am:4 | G:4 | Am:4 | E7:4 | Am:4 | G:4 | F:4 | E7:4",melody:"A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G4:2 A4 | B4 E4:3 | A4 C5:2 D5 | E5:1.5 F5:.5 E5 D5 | B4 G#4 A4:2 | A4:4"}
 };
 
 function loadLibrary(key){
@@ -225,7 +235,79 @@ function parseChordSeq(text,defBeats){return text.replace(/\n/g," | ").split(/\s
 function parseMelody(text){return text.replace(/\n/g," ").replace(/\|/g," ").split(/\s+/).filter(Boolean).map(tok=>{let b=1;const x=tok.match(/^(.*?):(\d*\.?\d+)$/);if(x){tok=x[1];b=Number(x[2])}if(/^R$/i.test(tok))return{symbol:"R",rest:true,beats:b};const m=tok.match(/^([A-Ga-g])([#b]?)(-?\d)$/);if(!m)throw new Error("音を読めません: "+tok);const name=(m[1].toUpperCase()+m[2]).toUpperCase();return{symbol:tok,rest:false,beats:b,midi:12*(Number(m[3])+1)+N[name]}})}
 function candidateVoicings(ch){const raw=ch.ints.map(i=>60+ch.root+i),out=[];for(let inv=0;inv<raw.length;inv++){let v=raw.slice();for(let i=0;i<inv;i++)v[i]+=12;v=v.sort((a,b)=>a-b);[-12,0,12].forEach(sh=>out.push(v.map(n=>n+sh)))}return out.filter(v=>Math.min(...v)>=45&&Math.max(...v)<=76)}
 function chooseVoicing(ch){const c=candidateVoicings(ch);if(!lastVoicing){lastVoicing=c[0].slice();return c[0]}const score=v=>v.reduce((s,n,i)=>s+Math.abs(n-(lastVoicing[i]??n)),0);const x=c.sort((a,b)=>score(a)-score(b))[0];lastVoicing=x.slice();return x}
-function scheduleChord(ch,start,dur,beatSec,style,feel){const notes=chooseVoicing(ch);if(style==="block"){notes.forEach((m,i)=>playSample(m,start+i*.01,dur*.85,.48));return;}let t=0,i=0;while(t<dur-.03){let step=style==="arp"?beatSec/2:beatSec;if(feel==="swing"&&style==="arp")step=(i%2===0)?beatSec*2/3:beatSec/3;if(style==="piano"){playSample(48+ch.root,start+t,Math.min(.7,step*.8),.45);notes.forEach((m,j)=>playSample(m,start+t+beatSec*.5+j*.01,Math.min(.32,beatSec*.3),.32));}else playSample(notes[i%notes.length],start+t,Math.min(.4,step*.8),.45);t+=step;i++;}}
+function scheduleChord(ch,start,dur,beatSec,style,feel){
+  const notes=chooseVoicing(ch);
+  const bass=48+ch.root, low=bass>=60?bass-12:bass;
+  const chord=(t,len,v=.4)=>notes.forEach((m,i)=>playSample(m,start+t+i*.01,Math.max(.1,len),v));
+  const bassHit=(t,m=low,len=.45,v=.44)=>playSample(m,start+t,Math.max(.1,len),v);
+
+  if(style==="block"){ chord(0,dur*.85,.48); return; }
+
+  if(style==="arp"){
+    let t=0,i=0;
+    while(t<dur-.03){
+      let step=beatSec/2;
+      if(feel==="swing") step=(i%2===0)?beatSec*2/3:beatSec/3;
+      playSample(notes[i%notes.length],start+t,Math.min(.42,step*.82),.46);
+      t+=step;i++;
+    } return;
+  }
+
+  if(style==="piano"){
+    for(let t=0;t<dur-.03;t+=beatSec){
+      bassHit(t,low,beatSec*.7,.44);
+      if(t+beatSec*.5<dur) chord(t+beatSec*.5,beatSec*.3,.32);
+    } return;
+  }
+
+  if(style==="pop"){
+    for(let n=0;n*beatSec<dur-.03;n++){
+      const t=n*beatSec;
+      bassHit(t,n%2===0?low:low+7,beatSec*.62,.44);
+      chord(t,beatSec*.25,n%2===0?.30:.36);
+      if(t+beatSec*.5<dur) chord(t+beatSec*.5,beatSec*.20,.27);
+    } return;
+  }
+
+  if(style==="ballad"){
+    const pat=[0,1,2,notes.length-1,2,1];
+    let t=0,i=0;
+    while(t<dur-.03){
+      if(i%6===0) bassHit(t,low,beatSec*.9,.38);
+      playSample(notes[pat[i%pat.length]%notes.length],start+t,Math.min(.65,beatSec*.75),.38);
+      t+=beatSec/2;i++;
+    } return;
+  }
+
+  if(style==="jazz"){
+    for(let n=0;n*beatSec<dur-.03;n++){
+      const t=n*beatSec;
+      bassHit(t,n%2===0?low:low+7,beatSec*.58,.36);
+      if(n%4===1||n%4===3){
+        const delay=feel==="swing"?beatSec*.10:0;
+        if(t+delay<dur) chord(t+delay,beatSec*.42,.38);
+      }
+    } return;
+  }
+
+  if(style==="bossa"){
+    for(let n=0;n*beatSec<dur-.03;n++){
+      const t=n*beatSec;
+      if(n%2===0) bassHit(t,n%4===0?low:low+7,beatSec*.68,.40);
+      if(t+beatSec*.5<dur) chord(t+beatSec*.5,beatSec*.28,.34);
+    } return;
+  }
+
+  if(style==="waltz"){
+    for(let t=0;t<dur-.03;t+=beatSec*3){
+      bassHit(t,low,beatSec*.70,.44);
+      if(t+beatSec<dur) chord(t+beatSec,beatSec*.46,.34);
+      if(t+beatSec*2<dur) chord(t+beatSec*2,beatSec*.46,.31);
+    } return;
+  }
+
+  chord(0,dur*.85,.48);
+}
 
 function stopAll(){
   token++;timers.forEach(clearTimeout);timers=[];
